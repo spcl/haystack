@@ -6,6 +6,12 @@ Makefile.in
 /py-compile
 /test-driver
 /ylwrap
+/build-aux
+/build
+/.deps
+/.libs
+/src/.deps
+/src/.libs
 
 # http://www.gnu.org/software/autoconf
 
@@ -40,3 +46,7 @@ m4/ltsugar.m4
 m4/ltversion.m4
 m4/lt~obsolete.m4
 autom4te.cache
+
+config.h*
+haystack-uninstalled.*
+haystack.pc*
