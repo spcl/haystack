@@ -1,10 +1,15 @@
 AC_INIT([haystack], 1.0)
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE([foreign])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
+# make static linking the default
+# AM_ENABLE_STATIC
+# AM_DISABLE_SHARED
+
 AC_PROG_CXX
+AM_PROG_AR
 AC_PROG_LIBTOOL
 
 AX_BOOST_BASE([1.60.0])
@@ -99,11 +104,21 @@ esac
 AM_CONDITIONAL(BUNDLED_PET, test $with_pet = bundled)
 AM_CONDITIONAL(BUILD_PET, test $with_pet = build)
 
-PACKAGE_CFLAGS="$PACKAGE_CFLAGS_ISL $PACKAGE_CFLAGS_BARVINOK $PACKAGE_CFLAGS_PET"
-PACKAGE_LIBS="-lisl -lbarvinok -lpet"
-AX_CREATE_PKGCONFIG_INFO
+# PACKAGE_CFLAGS="$PACKAGE_CFLAGS_ISL $PACKAGE_CFLAGS_BARVINOK $PACKAGE_CFLAGS_PET"
+# PACKAGE_LIBS="-lisl -lbarvinok -lpet"
+# AX_CREATE_PKGCONFIG_INFO
 
-AC_CONFIG_FILES(Makefile src/Makefile)
+# copy the example files
+AC_CONFIG_LINKS([tests/blink.c:examples/blink.c])
+AC_CONFIG_LINKS([tests/cholesky.c:examples/cholesky.c])
+AC_CONFIG_LINKS([tests/copy.c:examples/copy.c])
+AC_CONFIG_LINKS([tests/gemm.c:examples/gemm.c])
+AC_CONFIG_LINKS([tests/multiplication.c:examples/multiplication.c])
+AC_CONFIG_LINKS([tests/stencil.c:examples/stencil.c])
+AC_CONFIG_LINKS([tests/toy.c:examples/toy.c])
+
+AC_CONFIG_HEADERS(config.h)
+AC_CONFIG_FILES(Makefile src/Makefile tests/Makefile)
 if test $with_isl = bundled; then
 	AC_CONFIG_SUBDIRS(isl)
 fi

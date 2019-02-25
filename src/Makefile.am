@@ -33,19 +33,26 @@ LIB_ISL = $(ISL_LA) @ISL_LIBS@
 LIB_BARVINOK = $(BARVINOK_LA) @BARVINOK_LIBS@
 LIB_PET = $(PET_LA) @PET_LIBS@
 
-bin_PROGRAMS = haystack
-
 LINK = $(CXXLINK)
 
-haystack_SOURCES = \
-    main.cpp \
+# build the haystack library
+noinst_LIBRARIES = libhaystack.a
+libhaystack_a_SOURCES = \
     Program.cpp \
     HayStack.cpp \
     Access.cpp \
     isl-helpers.cpp \
     Timer.cpp
 
+libhaystack_a_CPPFLAGS = $(AM_CPPFLAGS) 
+libhaystack_a_LIBADD = $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
+
+# build the haystack program
+bin_PROGRAMS = haystack
+haystack_SOURCES = main.cpp 
+
 haystack_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS)
-haystack_LDADD = $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET) $(BOOST_LDFLAGS) -lboost_program_options
+haystack_LDFLAGS = -static  -lboost_program_options 
+haystack_LDADD = libhaystack.a $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
 
 
