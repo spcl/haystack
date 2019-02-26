@@ -1,6 +1,6 @@
 [submodule "isl"]
 	path = isl
-	url = git://repo.or.cz/isl.git
+	url = git@github.com:gysit/haystack-isl.git
 [submodule "barvinok"]
 	path = barvinok
 	url = git://repo.or.cz/barvinok.git

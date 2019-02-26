@@ -52,7 +52,7 @@ bin_PROGRAMS = haystack
 haystack_SOURCES = main.cpp 
 
 haystack_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS)
-haystack_LDFLAGS = -static  -lboost_program_options 
+haystack_LDFLAGS = -static -lboost_program_options 
 haystack_LDADD = libhaystack.a $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
 
 
