@@ -44,7 +44,7 @@ libhaystack_a_SOURCES = \
     isl-helpers.cpp \
     Timer.cpp
 
-libhaystack_a_CPPFLAGS = $(AM_CPPFLAGS) 
+libhaystack_a_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS)
 libhaystack_a_LIBADD = $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
 
 # build the haystack program
@@ -52,7 +52,7 @@ bin_PROGRAMS = haystack
 haystack_SOURCES = main.cpp 
 
 haystack_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS)
-haystack_LDFLAGS = -static -lboost_program_options 
+haystack_LDFLAGS = -static $(BOOST_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIB)
 haystack_LDADD = libhaystack.a $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
 
 
