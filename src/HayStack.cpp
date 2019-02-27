@@ -33,14 +33,14 @@ void HayStack::initModel(std::vector<NamedLong> Parameters) {
   Parameters_ = Program_.getSchedule().params();
   int NumberOfParameters = Parameters_.dim(isl::dim::param);
   if (Parameters.size() < NumberOfParameters) {
-    printf("\n\n-> exit(-1) not enough parameters\n");
+    printf("-> exit(-1) not enough parameters\n");
     exit(-1);
   }
   std::map<int, NamedLong> SortedParameters;
   for (auto &Parameter : Parameters) {
     int Position = Parameters_.find_dim_by_name(isl::dim::param, Parameter.first);
     if (Position < 0 || Position >= NumberOfParameters) {
-      printf("\n\n-> exit(-1) cannot find parameter %s\n", Parameter.first.c_str());
+      printf("-> exit(-1) cannot find parameter %s\n", Parameter.first.c_str());
       exit(-1);
     }
     Parameters_ = Parameters_.fix_si(isl::dim::param, Position, Parameter.second);

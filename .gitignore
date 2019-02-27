@@ -12,6 +12,7 @@ Makefile.in
 /.libs
 /src/.deps
 /src/.libs
+.vscode
 
 # http://www.gnu.org/software/autoconf
 

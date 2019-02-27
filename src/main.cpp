@@ -5,6 +5,7 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -17,16 +18,12 @@ namespace po = boost::program_options;
 
 const int CACHE_LINE_SIZE = 64;
 
-// Xeon Gold 6150
-const int CACHE_SIZE1 = 32 * 1024; // 8-way
-const int CACHE_SIZE2 = 1024 * 1024; // 16-way (non-inclusive which is close to inclusive)
-const int CACHE_SIZE3 = 1408 * 1024; // 11-way (non-inclusive which is close to inclusive)
+// default
+const int CACHE_SIZE1 = 32 * 1024;
+const int CACHE_SIZE2 = 512 * 1024;
 
-// polycache
-// const int CACHE_SIZE1 = 32 * 1024;  // 4-way
-// const int CACHE_SIZE2 = 256 * 1024; // 4-way
-
-struct range {
+struct range
+{
   std::string Name;
   int Current;
   int Start;
@@ -34,11 +31,19 @@ struct range {
   int Increment;
 };
 
-int main(int argc, const char **args) {
+bool check_path(std::string path)
+{
+  std::ifstream f(path.c_str());
+  return f.good();
+}
+
+int main(int argc, const char **args)
+{
   // define the program options
   po::options_description Descriptor("Program options");
   Descriptor.add_options()                                                                                 //
       ("help,h", "print the program options")                                                              //
+      ("cache-sizes,c", po::value<std::vector<long>>()->multitoken(), "specify the cache sizes")           //
       ("input-file,f", po::value<std::string>(), "specify the source file [file name]")                    //
       ("include-path,I", po::value<std::vector<std::string>>(), "specify the include path [include path]") //
       ("verbose,v", po::value<bool>()->default_value(false), "print additional information");
@@ -47,9 +52,35 @@ int main(int argc, const char **args) {
   po::variables_map Variables;
   po::store(po::parse_command_line(argc, args, Descriptor), Variables);
   po::notify(Variables);
-  if (Variables.count("help") || Variables.count("input-file") == 0) {
+  if (Variables.count("help") || Variables.count("input-file") == 0)
+  {
     std::cout << Descriptor << std::endl;
     return 0;
+  }
+
+  // check if the include paths are valid
+  for (int i = 0; i < Variables.count("include-path"); ++i)
+  {
+    if (!check_path(Variables["include-path"].as<std::vector<std::string>>()[i]))
+    {
+      printf("-> exit(-1) include path %s not valid\n",
+             Variables["include-path"].as<std::vector<std::string>>()[i].c_str());
+      exit(-1);
+    }
+  }
+  // check if the source file is valid
+  if (!check_path(Variables["input-file"].as<std::string>()))
+  {
+    printf("-> exit(-1) input file %s not found\n",
+            Variables["input-file"].as<std::string>().c_str());
+    exit(-1);
+  }
+
+  // allocate the machine model with default values
+  machine_model MachineModel = {CACHE_LINE_SIZE, {CACHE_SIZE1, CACHE_SIZE2}};
+  if (Variables.count("cache-sizes") > 0)
+  {
+    MachineModel.CacheSizes = Variables["cache-sizes"].as<std::vector<long>>();
   }
 
   // allocate the context outside of the cache model
@@ -58,11 +89,7 @@ int main(int argc, const char **args) {
     IncludePaths = Variables["include-path"].as<std::vector<std::string>>();
   isl::ctx Context = allocateContextWithIncludePaths(IncludePaths);
   isl_options_set_on_error(Context.get(), ISL_ON_ERROR_ABORT);
-  // TODO test if BV_CHAMBERS_ISL or BV_CHAMBERS_POLYLIB is more efficient
-
   {
-    // allocate the machine model
-    machine_model MachineModel = {CACHE_LINE_SIZE, {CACHE_SIZE1, CACHE_SIZE2}};
     // compute the total time
     auto StartExecution = std::chrono::high_resolution_clock::now();
     // allocate the cache model and compile the program
@@ -85,18 +112,21 @@ int main(int argc, const char **args) {
     long TotalAccesses = 0;
     long TotalCompulsory = 0;
     std::vector<long> TotalCapacity(MachineModel.CacheSizes.size(), 0);
-    for (auto &CacheMiss : CacheMisses) {
+    for (auto &CacheMiss : CacheMisses)
+    {
       TotalAccesses += CacheMiss.second.Total;
       TotalCompulsory += CacheMiss.second.CompulsoryMisses;
       std::transform(TotalCapacity.begin(), TotalCapacity.end(), CacheMiss.second.CapacityMisses.begin(),
                      TotalCapacity.begin(), std::plus<long>());
       // print intermediate results if verbose is true
-      if (Variables["verbose"].as<bool>()) {
+      if (Variables["verbose"].as<bool>())
+      {
         std::cout << std::fixed;
         std::cout << std::setprecision(2);
         std::cout << "   -> " << CacheMiss.first << " counted ";
         std::cout << CacheMiss.second.CompulsoryMisses << "/";
-        for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
+        for (int i = 0; i < MachineModel.CacheSizes.size(); ++i)
+        {
           std::cout << CacheMiss.second.CapacityMisses[i] << "/";
         }
         std::cout << CacheMiss.second.Total << " (CO/";
@@ -105,7 +135,8 @@ int main(int argc, const char **args) {
         std::cout << "TO) ";
 #ifdef PREFETCHING
         std::cout << "using ";
-        for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
+        for (int i = 0; i < MachineModel.CacheSizes.size(); ++i)
+        {
           int Streams = 0;
           if (CacheMiss.second.PrefetchInfo.Prefetched[i])
             Streams = CacheMiss.second.PrefetchInfo.PrefetchStreams[i];
@@ -143,15 +174,19 @@ int main(int argc, const char **args) {
     Timer::printClocks();
     // print the affinity info
     std::map<std::vector<int>, int> Affinity;
-    for (auto &CacheMiss : CacheMisses) {
-      for (auto Aff : CacheMiss.second.Affinity) {
+    for (auto &CacheMiss : CacheMisses)
+    {
+      for (auto Aff : CacheMiss.second.Affinity)
+      {
         Affinity[Aff.first] += Aff.second;
       }
     }
-    if (Affinity.size() > 0) {
+    if (Affinity.size() > 0)
+    {
       std::cout << "==================================================" << std::endl;
       // print the affinity
-      for (auto Aff : Affinity) {
+      for (auto Aff : Affinity)
+      {
         std::cout << " - NonAffine " << Aff.first[0] << " Affine " << Aff.first[1] << " : " << Aff.second << std::endl;
       }
       std::cout << "==================================================" << std::endl;
@@ -159,11 +194,14 @@ int main(int argc, const char **args) {
 
     // print the conflicts
     auto Conflicts = Model.getConflicts();
-    if (Conflicts.size() > 0) {
+    if (Conflicts.size() > 0)
+    {
       std::cout << "==================================================" << std::endl;
-      for (auto Conflict : Conflicts) {
+      for (auto Conflict : Conflicts)
+      {
         std::cout << " - " << Conflict.first << ": ";
-        for (auto Name : Conflict.second) {
+        for (auto Name : Conflict.second)
+        {
           std::cout << Name << " ";
         }
         std::cout << std::endl;

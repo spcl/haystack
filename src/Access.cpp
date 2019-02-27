@@ -165,7 +165,7 @@ std::vector<long> Access::countCapacityMisses(std::vector<long> CacheSizes) {
   // (the bounds were computed for the maximal cache size)
   if (*std::max_element(MachineModel_.CacheSizes.begin(), MachineModel_.CacheSizes.end()) <
       *std::max_element(CacheSizes.begin(), CacheSizes.end())) {
-    printf("\n\n-> exit(-1) cache size exceeds maximum cache size of the machine\n");
+    printf("-> exit(-1) cache size exceeds maximum cache size of the machine\n");
     exit(-1);
   }
 #endif

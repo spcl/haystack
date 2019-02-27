@@ -7,7 +7,7 @@
 void Program::extractScop(std::string SourceFile) {
   pet_scop *PetScop = pet_scop_extract_from_C_source(Context_.get(), SourceFile.c_str(), NULL);
   if (PetScop == nullptr) {
-    printf("\n\n-> exit(-1) cannot extract scope\n");
+    printf("-> exit(-1) cannot extract scope\n");
     exit(-1);
   }
 
