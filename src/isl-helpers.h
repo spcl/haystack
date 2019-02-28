@@ -16,6 +16,8 @@ std::pair<isl::aff, isl::val> get_stride_info(isl::set Set, int Dimension);
 
 long cardinality(isl::set Set);
 
+std::string printExpression(isl::aff Aff);
+
 } // namespace isl
 
 #endif

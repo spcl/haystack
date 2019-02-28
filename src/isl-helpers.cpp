@@ -42,7 +42,8 @@ long isl::computeMaximum(isl::set Domain, int Dimension) {
   return Maximum;
 }
 
-std::pair<isl::aff, isl::val> isl::get_stride_info(isl::set Set, int Dimension) {
+std::pair<isl::aff, isl::val> isl::get_stride_info(isl::set Set,
+                                                   int Dimension) {
   isl_stride_info *Info = isl_set_get_stride_info(Set.get(), Dimension);
   isl::val Stride = isl::manage(isl_stride_info_get_stride(Info));
   isl::aff Offset = isl::manage(isl_stride_info_get_offset(Info));
@@ -50,4 +51,76 @@ std::pair<isl::aff, isl::val> isl::get_stride_info(isl::set Set, int Dimension) 
   return std::make_pair(Offset, Stride);
 }
 
-long isl::cardinality(isl::set Set) { return get_value(isl::manage(isl_set_card(isl::set(Set).release())).max()); }
+long isl::cardinality(isl::set Set) {
+  return get_value(isl::manage(isl_set_card(isl::set(Set).release())).max());
+}
+
+std::string isl::printExpression(isl::aff Expression) {
+  bool isFirst = true;
+  std::string Result = "";
+  auto printValue = [&](isl::val Value, bool isCoefficient) {
+    std::string Result = "";
+    // print the sign if needed
+    int Sign = Value.sgn();
+    if (Sign < 0) {
+      Value = Value.neg();
+      Result = "-";
+    } else if (!isFirst) {
+      Result = "+";
+    }
+    if (!(Value.is_one() && isCoefficient)) {
+      Result += Value.to_str();
+    }
+    return Result;
+  };
+  auto printAff = [&](isl::aff Aff) {
+    isl::val Denominator = Aff.get_denominator_val();
+    if (!Denominator.is_one()) {
+      Result += "(";
+    }
+    // convert the parameters
+    for (int i = 0; i < Aff.dim(isl::dim::param); ++i) {
+      isl::val Coefficient = Aff.get_coefficient_val(isl::dim::param, i);
+      if (!Coefficient.is_zero()) {
+        Result += printValue(Coefficient.mul(Denominator), true);
+        Result += Aff.get_dim_name(isl::dim::param, i);
+        isFirst = false;
+      }
+    }
+    // convert the variables
+    for (int i = 0; i < Aff.dim(isl::dim::in); ++i) {
+      isl::val Coefficient = Aff.get_coefficient_val(isl::dim::in, i);
+      if (!Coefficient.is_zero()) {
+        Result += printValue(Coefficient.mul(Denominator), true);
+        Result += Aff.get_dim_name(isl::dim::in, i);
+        isFirst = false;
+      }
+    }
+    // add the constant
+    isl::val Constant = Aff.get_constant_val();
+    if (!Constant.is_zero()) {
+      Result += printValue(Constant.mul(Denominator), false);
+      isFirst = false;
+    }
+    if (!Denominator.is_one()) {
+      isFirst = true;
+      Result += ")/" + printValue(Denominator, false);
+      isFirst = false;
+    }
+  };
+  // pint the main expression
+  printAff(Expression);
+  // add possible divisors
+  for (int i = 0; i < Expression.dim(isl::dim::div); ++i) {
+    isl::aff Divisor = Expression.get_div(i);
+    isl::val Coefficient = Expression.get_coefficient_val(isl::dim::div, i);
+    if (!Coefficient.is_zero()) {
+      Result += printValue(Coefficient, true);
+      Result += "\u230A";
+      isFirst = true;
+      printAff(Divisor);
+      Result += "\u230B";
+    }
+  }
+  return Result;
+}
