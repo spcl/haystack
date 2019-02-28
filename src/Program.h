@@ -14,8 +14,6 @@ public:
   Program() = delete;
   Program(isl::ctx Context, machine_model MachineModel) : Context_(Context), MachineModel_(MachineModel) {}
 
-  void setScop(isl::schedule Schedule, isl::union_map Reads, isl::union_map Writes,
-               std::map<std::string, isl::set> ArrayExtents, std::map<std::string, long> ElementSizes);
   void extractScop(std::string SourceFile);
 
   void computeAccessToLine(isl::set Parameters);
@@ -31,8 +29,10 @@ public:
   size_t getNumOfReadReferences(std::string Statement) { return ReadReferences_[Statement].size(); }
   size_t getNumOfWriteReferences(std::string Statement) { return WriteReferences_[Statement].size(); }
 
+  std::pair<unsigned, unsigned> getScopLoc() const { return ScopLoc_; };
+
 private:
-  void processScop();
+  isl::union_map extendAccesses(isl::union_map Accesses);
   isl::map introduceCacheLines(std::string Name, isl::map AccessToArray, long ElementsPerCacheLine) const;
   isl::map introduceCacheSets(std::string Name, isl::map AccessToArray, long NumberOfCacheSets) const;
 
@@ -54,6 +54,11 @@ private:
   // read and write references per statement
   std::map<std::string, std::vector<std::string>> ReadReferences_;
   std::map<std::string, std::vector<std::string>> WriteReferences_;
+  std::map<std::string, std::vector<std::string>> AllReferences_;
+
+  // location info for scop and memory accesses
+  std::pair<unsigned, unsigned> ScopLoc_;
+  std::map<std::string, access_info> AccessInfo_;
 };
 
 #endif

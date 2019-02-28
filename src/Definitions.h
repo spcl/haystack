@@ -70,6 +70,12 @@ struct misses {
   prefetch_info PrefetchInfo;
 };
 
+// struct holding access information
+struct access_info {
+  std::string Access;
+  int Line;
+};
+
 // define named types
 typedef std::pair<std::string, int> NamedInt;
 typedef std::pair<std::string, long> NamedLong;

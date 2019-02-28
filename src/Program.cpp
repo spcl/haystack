@@ -16,10 +16,10 @@ void Program::extractScop(std::string SourceFile) {
   Schedule_ = isl::manage(pet_scop_get_schedule(PetScop));
   Reads_ = isl::manage(pet_scop_get_tagged_may_reads(PetScop));
   Writes_ = isl::manage(pet_scop_get_tagged_may_writes(PetScop));
-  
+
   // check if the schedule is bounded
   auto checkIfBounded = [](isl::set Set) {
-    if(!Set.is_bounded()) {
+    if (!Set.is_bounded()) {
       printf("-> exit(-1) schedule not bounded\n");
       exit(-1);
     }
@@ -39,89 +39,6 @@ void Program::extractScop(std::string SourceFile) {
     ElementSizes_[Name] = PetScop->arrays[idx]->element_size;
   }
 
-  // // extract reference information
-  // for (int idx = 0; idx < PetScop->n_stmt; idx++) {
-  //   //pet_loc PetLoc = PetScop->stmts[idx]->loc;
-
-  //   pet_tree* Tree = PetScop->stmts[idx]->body;
-  //   pet_loc* Loc = pet_tree_get_loc(Tree);
-  //   pet_expr* Expr = pet_tree_expr_get_expr(Tree);
-
-  //   printf(" -> line %d\n", pet_loc_get_line(Loc));
-
-  //   auto printExpr = [](__isl_keep pet_expr *expr, void *user) {
-
-  //     //pet_expr_dump(expr);
-  //     if(pet_expr_access_is_read(expr) || pet_expr_access_is_write(expr)) {
-  //       isl::id RefId = isl::manage(pet_expr_access_get_ref_id(expr));
-  //       isl::multi_pw_aff Index = isl::manage(pet_expr_access_get_index(expr));
-  //       // filter the array accesses
-  //       if(Index.dim(isl::dim::out) > 0 && Index.has_tuple_id(isl::dim::out)) {
-  //         std::string Name = RefId.to_str();
-  //         //Index.dump();
-          
-  //         std::string Array = Index.get_tuple_name(isl::dim::out);
-  //         printf(" - Access %s %s\n", Name.c_str(), Array.c_str());
-
-  //         // process the array dimensions
-  //         for(int i=0; i<Index.dim(isl::dim::out); ++i) {
-  //           std::vector<std::string> Expressions;
-  //           auto IndexExpr = Index.get_pw_aff(i);
-  //           auto extractExpr = [&](isl::set Set, isl::aff Aff) {
-
-  //             Aff.dump();
-
-  //             printf(" -> manually %s\n", isl::printExpression(Aff).c_str());
-
-  //             return isl::stat::ok();
-  //           };
-  //           IndexExpr.foreach_piece(extractExpr);
-  //         }
-
-  //         //Index.e
-  //         std::string Access = Index.domain().to_str();
-
-  //       }
-
-  //     }
-
-
-  //     return 0;
-  //   };
-
-  //   pet_expr_foreach_access_expr(Expr, printExpr, nullptr);
-
-  //   pet_expr_free(Expr);
-  //   pet_loc_free(Loc);
-
-  //   // Stmt->
-  //   // printf("Stmt->n_arg %d\n", Stmt->n_arg);
-  //   // for (int idx = 0; idx < Stmt->n_arg; idx++) {
-  //   //   pet_expr* Expr = Stmt->args[idx];
-
-  //   //   printf(" -> expression %d\n", idx);
-  //   //   pet_expr_dump(Expr);
-  //   //}
-    
-  // }
-  //pet_scop_dump(PetScop);
-
-  pet_scop_free(PetScop);
-  processScop();
-}
-
-void Program::setScop(isl::schedule Schedule, isl::union_map Reads, isl::union_map Writes,
-                      std::map<std::string, isl::set> ArrayExtents, std::map<std::string, long> ElementSizes) {
-  Schedule_ = Schedule;
-  Reads_ = Reads;
-  Writes_ = Writes;
-  ArrayExtents_ = ArrayExtents;
-  ElementSizes_ = ElementSizes;
-
-  processScop();
-}
-
-void Program::processScop() {
   // extract the read and write references
   auto extractReads = [&](isl::map Map) {
     if (ElementSizes_.count(Map.get_tuple_name(isl::dim::out)) > 0) {
@@ -146,6 +63,58 @@ void Program::processScop() {
     std::sort(ReadReference.second.begin(), ReadReference.second.end());
   for (auto &WriteReference : WriteReferences_)
     std::sort(WriteReference.second.begin(), WriteReference.second.end());
+  // concatenate reads and writes
+  AllReferences_ = ReadReferences_;
+  for (auto &WriteReference : WriteReferences_)
+    std::copy(WriteReference.second.begin(), WriteReference.second.end(),
+              std::back_inserter(AllReferences_[WriteReference.first]));
+
+  // extract the access information
+  ScopLoc_ = std::make_pair(pet_loc_get_start(PetScop->loc), pet_loc_get_end(PetScop->loc));
+  for (int idx = 0; idx < PetScop->n_stmt; idx++) {
+    pet_expr *Expr = pet_tree_expr_get_expr(PetScop->stmts[idx]->body);
+    std::map<std::string, std::string> Accesses;
+    auto printExpr = [](__isl_keep pet_expr *Expr, void *User) {
+      if (pet_expr_access_is_read(Expr) || pet_expr_access_is_write(Expr)) {
+        isl::id RefId = isl::manage(pet_expr_access_get_ref_id(Expr));
+        isl::multi_pw_aff Index = isl::manage(pet_expr_access_get_index(Expr));
+        // filter the array accesses
+        if (Index.dim(isl::dim::out) > 0 && Index.has_tuple_id(isl::dim::out)) {
+          std::string Name = RefId.to_str();
+          std::string Access = Index.get_tuple_name(isl::dim::out);
+          // process the array dimensions
+          for (int i = 0; i < Index.dim(isl::dim::out); ++i) {
+            std::vector<std::string> Expressions;
+            auto IndexExpr = Index.get_pw_aff(i);
+            auto extractExpr = [&](isl::set Set, isl::aff Aff) {
+              Access += "[" + isl::printExpression(Aff) + "]";
+              return isl::stat::ok();
+            };
+            IndexExpr.foreach_piece(extractExpr);
+          }
+          static_cast<std::map<std::string, std::string> *>(User)->operator[](Name) = Access;
+        }
+      }
+      return 0;
+    };
+    pet_expr_foreach_access_expr(Expr, printExpr, &Accesses);
+    // get the line number
+    pet_loc *Loc = pet_tree_get_loc(PetScop->stmts[idx]->body);
+    int Line = pet_loc_get_line(Loc);
+    pet_loc_free(Loc);
+    // store the access information
+    for (auto Access : Accesses) {
+      AccessInfo_[Access.first] = {Access.second, Line};
+    }
+    pet_expr_free(Expr);
+  }
+
+  // TODO
+  // map access name to
+  // - start and stop indexes instead of line numbers
+  // - use line numer in yaml!
+  // - array access expression
+  // - order for every line the statements by the access name
 
   // extend the schedule with the reference dimension
   ScheduleMap_ = Schedule_.get_map().intersect_domain(Schedule_.get_domain());
@@ -177,62 +146,43 @@ void Program::processScop() {
   };
   ScheduleMap_.foreach_map(extendSchedule);
   ScheduleMap_ = ScheduleExt;
-
-  // extend the read map
-  isl::union_map ReadsExt = isl::map::empty(Reads_.get_space());
-  auto extendReads = [&](isl::map Reads) {
-    std::string Statement = Reads.domain().unwrap().get_tuple_name(isl::dim::in);
-    std::string Reference = Reads.domain().unwrap().get_tuple_name(isl::dim::out);
-    std::string Array = Reads.get_tuple_name(isl::dim::out);
-    if (ElementSizes_.count(Array) > 0) {
-      // get the reference offset
-      auto Iter = std::find(ReadReferences_[Statement].begin(), ReadReferences_[Statement].end(), Reference);
-      assert(Iter != ReadReferences_[Statement].end());
-      // extend the map with the offset
-      Reads = Reads.insert_dims(isl::dim::in, Reads.dim(isl::dim::in), 1);
-      Reads = Reads.set_tuple_name(isl::dim::in, Statement);
-      // set the offset number
-      isl::local_space LSIn = isl::local_space(Reads.domain().get_space());
-      isl::pw_aff VarIn = isl::pw_aff::var_on_domain(LSIn, isl::dim::set, Reads.dim(isl::dim::in) - 1);
-      isl::pw_aff Offset = VarIn * 0 + std::distance(ReadReferences_[Statement].begin(), Iter);
-      isl::set EqualConstraint = VarIn.eq_set(Offset);
-      Reads = Reads.intersect_domain(EqualConstraint);
-      ReadsExt = ReadsExt.unite(isl::union_map(Reads));
-    }
-    return isl::stat::ok();
-  };
-  Reads_.foreach_map(extendReads);
-  Reads_ = ReadsExt;
-
   // extend the write map
-  isl::union_map WritesExt = isl::map::empty(Writes_.get_space());
-  auto extendWrites = [&](isl::map Writes) {
-    std::string Statement = Writes.domain().unwrap().get_tuple_name(isl::dim::in);
-    std::string Reference = Writes.domain().unwrap().get_tuple_name(isl::dim::out);
-    std::string Array = Writes.get_tuple_name(isl::dim::out);
-    if (ElementSizes_.count(Array) > 0) {
-      // get the reference offset
-      auto Iter = std::find(WriteReferences_[Statement].begin(), WriteReferences_[Statement].end(), Reference);
-      assert(Iter != WriteReferences_[Statement].end());
-      // extend the map with the offset
-      Writes = Writes.insert_dims(isl::dim::in, Writes.dim(isl::dim::in), 1);
-      Writes = Writes.set_tuple_name(isl::dim::in, Statement);
-      // set the offset number
-      isl::local_space LSIn = isl::local_space(Writes.domain().get_space());
-      isl::pw_aff VarIn = isl::pw_aff::var_on_domain(LSIn, isl::dim::set, Writes.dim(isl::dim::in) - 1);
-      auto Distance = std::distance(WriteReferences_[Statement].begin(), Iter) + ReadReferences_[Statement].size();
-      isl::pw_aff Offset = VarIn * 0 + Distance;
-      isl::set EqualConstraint = VarIn.eq_set(Offset);
-      Writes = Writes.intersect_domain(EqualConstraint);
-      WritesExt = WritesExt.unite(isl::union_map(Writes));
-    }
-    return isl::stat::ok();
-  };
-  Writes_.foreach_map(extendWrites);
-  Writes_ = WritesExt;
-
+  Reads_ = extendAccesses(Reads_);
+  Writes_ = extendAccesses(Writes_);
   // compute the access domain
   AccessDomain_ = Reads_.domain().unite(Writes_.domain()).coalesce();
+
+  // free the pet scop
+  pet_scop_free(PetScop);
+}
+
+isl::union_map Program::extendAccesses(isl::union_map Accesses) {
+  // extend the access map
+  isl::union_map AccessesExt = isl::map::empty(Accesses.get_space());
+  auto extendAccesses = [&](isl::map Access) {
+    std::string Statement = Access.domain().unwrap().get_tuple_name(isl::dim::in);
+    std::string Reference = Access.domain().unwrap().get_tuple_name(isl::dim::out);
+    std::string Array = Access.get_tuple_name(isl::dim::out);
+    if (ElementSizes_.count(Array) > 0) {
+      // get the reference offset
+      auto Iter = std::find(AllReferences_[Statement].begin(), AllReferences_[Statement].end(), Reference);
+      assert(Iter != AllReferences_[Statement].end());
+      // extend the map with the offset
+      Access = Access.insert_dims(isl::dim::in, Access.dim(isl::dim::in), 1);
+      Access = Access.set_tuple_name(isl::dim::in, Statement);
+      // set the offset number
+      isl::local_space LSIn = isl::local_space(Access.domain().get_space());
+      isl::pw_aff VarIn = isl::pw_aff::var_on_domain(LSIn, isl::dim::set, Access.dim(isl::dim::in) - 1);
+      auto Distance = std::distance(AllReferences_[Statement].begin(), Iter);
+      isl::pw_aff Offset = VarIn * 0 + Distance;
+      isl::set EqualConstraint = VarIn.eq_set(Offset);
+      Access = Access.intersect_domain(EqualConstraint);
+      AccessesExt = AccessesExt.unite(isl::union_map(Access));
+    }
+    return isl::stat::ok();
+  };
+  Accesses.foreach_map(extendAccesses);
+  return AccessesExt;
 }
 
 void Program::computeAccessToLine(isl::set Parameters) {
@@ -257,7 +207,6 @@ void Program::computeAccessToLine(isl::set Parameters) {
       AccessToLine_ = AccessToLine_.unite(isl::union_map(AccessToArray));
       AccessToLine_ = AccessToLine_.coalesce();
     }
-
     // compose the memory accesses with access map
     isl::union_map Accesses = Reads_.unite(Writes_);
     AccessToLine_ = Accesses.apply_range(AccessToLine_);

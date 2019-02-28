@@ -39,6 +39,8 @@ public:
   std::vector<Access> getAccesses() const { return Accesses_; }
   std::map<std::string, std::vector<std::string>> getConflicts() const { return Conflicts_; }
 
+  std::pair<unsigned, unsigned> getScopLoc() const { return Program_.getScopLoc(); }
+
 private:
   void computeGlobalMaps();
   void extractAccesses();

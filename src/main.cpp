@@ -43,9 +43,9 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   machine_model MachineModel = {Variables["line-size"].as<long>(), Variables["cache-sizes"].as<std::vector<long>>()};
   printf("-> setting up cache levels\n");
   std::sort(MachineModel.CacheSizes.begin(), MachineModel.CacheSizes.end());
-  for(auto CacheSize: MachineModel.CacheSizes) {
-    if(CacheSize % 1024 == 0) {
-      printf("   - %ld kB with %ld B cache lines\n", CacheSize/1024, MachineModel.CacheLineSize);
+  for (auto CacheSize : MachineModel.CacheSizes) {
+    if (CacheSize % 1024 == 0) {
+      printf("   - %ld kB with %ld B cache lines\n", CacheSize / 1024, MachineModel.CacheLineSize);
     } else {
       printf("   - %ld B with %ld B cache lines\n", CacheSize, MachineModel.CacheLineSize);
     }
@@ -53,9 +53,25 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   printf("-> done\n");
   // compute the total time
   auto StartExecution = std::chrono::high_resolution_clock::now();
+  printf("-> searching scop\n");
   // allocate the cache model and compile the program
   HayStack Model(Context, MachineModel);
   Model.compileProgram(Variables["input-file"].as<std::string>());
+
+  // // read the corresponding bytes of the input file
+  // auto ScopLoc = Model.getScopLoc();
+  // std::ifstream SourceFile;
+  // SourceFile.open(Variables["input-file"].as<std::string>());
+  // SourceFile.seekg(ScopLoc.first, std::ios::beg);
+  // size_t Length = ScopLoc.second - ScopLoc.first;
+  // char *Buffer = new char[Length + 1];
+  // Buffer[Length] = 0;
+  // SourceFile.read(Buffer, Length);
+  // printf("%s", &Buffer[0]);
+  // SourceFile.close();
+  // delete Buffer;
+
+  printf("-> done\n");
   // run the preprocessing
   printf("-> start preprocessing...\n");
   auto StartPreprocessing = std::chrono::high_resolution_clock::now();
@@ -77,33 +93,33 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
     TotalCompulsory += CacheMiss.second.CompulsoryMisses;
     std::transform(TotalCapacity.begin(), TotalCapacity.end(), CacheMiss.second.CapacityMisses.begin(),
                    TotalCapacity.begin(), std::plus<long>());
-//     // print intermediate results if verbose is true
-//     if (Variables["verbose"].as<bool>()) {
-//       std::cout << std::fixed;
-//       std::cout << std::setprecision(2);
-//       std::cout << "   -> " << CacheMiss.first << " counted ";
-//       std::cout << CacheMiss.second.CompulsoryMisses << "/";
-//       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
-//         std::cout << CacheMiss.second.CapacityMisses[i] << "/";
-//       }
-//       std::cout << CacheMiss.second.Total << " (CO/";
-//       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i)
-//         std::cout << "CA" << i << "/";
-//       std::cout << "TO) ";
-// #ifdef PREFETCHING
-//       std::cout << "using ";
-//       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
-//         int Streams = 0;
-//         if (CacheMiss.second.PrefetchInfo.Prefetched[i])
-//           Streams = CacheMiss.second.PrefetchInfo.PrefetchStreams[i];
-//         std::cout << Streams;
-//         if (i != MachineModel.CacheSizes.size() - 1)
-//           std::cout << "/";
-//       }
-//       std::cout << " prefetch streams ";
-// #endif
-//       std::cout << "\n";
-//     }
+    //     // print intermediate results if verbose is true
+    //     if (Variables["verbose"].as<bool>()) {
+    //       std::cout << std::fixed;
+    //       std::cout << std::setprecision(2);
+    //       std::cout << "   -> " << CacheMiss.first << " counted ";
+    //       std::cout << CacheMiss.second.CompulsoryMisses << "/";
+    //       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
+    //         std::cout << CacheMiss.second.CapacityMisses[i] << "/";
+    //       }
+    //       std::cout << CacheMiss.second.Total << " (CO/";
+    //       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i)
+    //         std::cout << "CA" << i << "/";
+    //       std::cout << "TO) ";
+    // #ifdef PREFETCHING
+    //       std::cout << "using ";
+    //       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
+    //         int Streams = 0;
+    //         if (CacheMiss.second.PrefetchInfo.Prefetched[i])
+    //           Streams = CacheMiss.second.PrefetchInfo.PrefetchStreams[i];
+    //         std::cout << Streams;
+    //         if (i != MachineModel.CacheSizes.size() - 1)
+    //           std::cout << "/";
+    //       }
+    //       std::cout << " prefetch streams ";
+    // #endif
+    //       std::cout << "\n";
+    //     }
   }
   // print the summary
   std::cout << std::fixed;
@@ -153,8 +169,6 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   // std::cout << std::endl;
   // std::cout << "==================================================" <<
   // std::endl;
-
-
 }
 
 int main(int argc, const char **args) {
@@ -207,6 +221,6 @@ int main(int argc, const char **args) {
   } catch (const boost::program_options::error &ex) {
     printf("-> exit(-1) option parsing error: %s\n", ex.what());
   }
-  
+
   return 0;
 }
