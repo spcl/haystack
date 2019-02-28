@@ -24,8 +24,6 @@ void Access::initAccess(std::vector<NamedLong> ParameterValues, isl::set Paramet
   long CacheLevels = MachineModel_.CacheSizes.size();
   // clear the statistics
   Result_.PrefetchInfo = Prefetched_;
-  Result_.Methods = {0, 0, 0};
-  Result_.Splits = {0, 0, 0, 0};
   // number of cache misses
   Result_.CompulsoryMisses = 0;
   Result_.CapacityMisses = std::vector<long>(CacheLevels, 0);
@@ -202,7 +200,6 @@ void Access::storeAffinePieces() {
   for (auto &Piece : Expression_) {
     if (!Piece.Expression.is_null()) {
       long All = getPieceSize(Piece);
-      Result_.Methods.Barvinok += All;
       Affine_.push_back(Piece);
     } else {
       NonAffine.push_back(Piece);
@@ -342,7 +339,6 @@ void Access::enumerateNonAffineDimensions(piece Piece) {
 #ifdef ENUMERATE_POINTS
   // count manually if only the memory access dimension is non-affine
   NonAffine_.push_back(Piece);
-  Result_.Methods.Enumerate += All;
 #else
   // compute the dimensions
   std::vector<int> NonAffine = findNonAffineDimensions(Piece);
@@ -352,14 +348,10 @@ void Access::enumerateNonAffineDimensions(piece Piece) {
     if (Iter == NonAffine.end())
       Affine.push_back(i);
   }
-  // store the affinity info
-  std::vector<int> Key = {(int)NonAffine.size(), (int)Affine.size() - 1};
-  Result_.Affinity[Key]++;
   // enumerate and count the affine subdomains
   if (Affine.size() <= 1 || All == 0) {
     // count manually if only the memory access dimension is non-affine
     NonAffine_.push_back(Piece);
-    Result_.Methods.Enumerate += All;
   } else {
     // compute the enumeration domain
     isl::set Enumeration = Piece.Domain;
@@ -369,7 +361,6 @@ void Access::enumerateNonAffineDimensions(piece Piece) {
     // check if there is enough work for barvinok
     if (All < 16 || All / isl::cardinality(Enumeration) < 16) {
       NonAffine_.push_back(Piece);
-      Result_.Methods.Enumerate += All;
     } else {
       // compute the piecewise polynomial
       auto countCacheMisses = [&](isl::basic_set All) {
@@ -379,7 +370,6 @@ void Access::enumerateNonAffineDimensions(piece Piece) {
         }
         // enumerate the points of the enumeration domain
         auto countSubdomain = [&](isl::point Point) {
-          Result_.Splits.Enumerate++;
           // compute the updated domain of the piece
           std::map<int, long> Values;
           auto Domain = All;
@@ -408,7 +398,6 @@ void Access::enumerateNonAffineDimensions(piece Piece) {
       // we evaluate the basic sets separately since otherwise foreach counts some points multiple times
       Piece.Domain = isl::manage(isl_set_make_disjoint(Piece.Domain.release()));
       Piece.Domain.foreach_basic_set(countCacheMisses);
-      Result_.Methods.Barvinok += All;
     }
   }
 #endif
@@ -469,7 +458,6 @@ void Access::applyEqualization() {
     }
   }
   // update the expression
-  Result_.Splits.Equalize += Expression.size() - Expression_.size();
   std::swap(Expression_, Expression);
   Timer::stopTimer("applyEqualization");
 }
@@ -541,7 +529,6 @@ void Access::applyRasterization() {
     Expression.insert(Expression.end(), Current.begin(), Current.end());
   }
   // update the expression
-  Result_.Splits.Raster += Expression.size() - Expression_.size();
   std::swap(Expression_, Expression);
   Timer::stopTimer("applyRasterization");
 }
@@ -1155,7 +1142,6 @@ void Access::extractStackDistanceExpression(isl::union_pw_qpolynomial Count) {
         Piece.Expression = extractAffineExpression(Piece);
       }
       Expression_.push_back(Piece);
-      Result_.Splits.Barvinok++;
       return isl::stat::ok();
     };
     Polynomial.foreach_piece(analyzePiece);

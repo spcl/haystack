@@ -11,11 +11,12 @@
 // computation options
 #define RASTERIZATION 1
 #define EQUALIZATION 1
-//#define COMPUTE_BOUNDS 1
-//#define COMPUTE_CONFLICTS 1
 #define DIMENSION_COUNTING 1
-#define TIMERS 1
+//#define TIMERS 1
+//#define COMPUTE_BOUNDS 1 // TODO configuration parameters!
+//#define COMPUTE_CONFLICTS 1
 //#define PREFETCHING 1
+
 //#define ENUMERATE_POINTS 1
 
 // flags to control the verification steps
@@ -52,21 +53,6 @@ struct piece {
   isl::pw_aff Expression;
 };
 
-// statistics about the counting method
-struct methods {
-  long Barvinok;
-  long Bernstein;
-  long Enumerate;
-};
-
-// statistics about the splits introduced
-struct splits {
-  long Barvinok;
-  long Equalize;
-  long Raster;
-  long Enumerate;
-};
-
 // struct holding prefetch info
 struct prefetch_info {
   bool UnitStride;
@@ -82,9 +68,6 @@ struct misses {
   long CompulsoryMisses;
   std::vector<long> CapacityMisses;
   prefetch_info PrefetchInfo;
-  methods Methods;
-  splits Splits;
-  std::map<std::vector<int>, int> Affinity;
 };
 
 // define named types

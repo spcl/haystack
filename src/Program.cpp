@@ -16,6 +16,16 @@ void Program::extractScop(std::string SourceFile) {
   Schedule_ = isl::manage(pet_scop_get_schedule(PetScop));
   Reads_ = isl::manage(pet_scop_get_tagged_may_reads(PetScop));
   Writes_ = isl::manage(pet_scop_get_tagged_may_writes(PetScop));
+  
+  // check if the schedule is bounded
+  auto checkIfBounded = [](isl::set Set) {
+    if(!Set.is_bounded()) {
+      printf("-> exit(-1) schedule not bounded\n");
+      exit(-1);
+    }
+    return isl::stat::ok();
+  };
+  Schedule_.get_domain().foreach_set(checkIfBounded);
 
   // extract the array information
   for (int idx = 0; idx < PetScop->n_array; idx++) {
@@ -28,6 +38,73 @@ void Program::extractScop(std::string SourceFile) {
     ArrayExtents_[Name] = Extent;
     ElementSizes_[Name] = PetScop->arrays[idx]->element_size;
   }
+
+  // // extract reference information
+  // for (int idx = 0; idx < PetScop->n_stmt; idx++) {
+  //   //pet_loc PetLoc = PetScop->stmts[idx]->loc;
+
+  //   pet_tree* Tree = PetScop->stmts[idx]->body;
+  //   pet_loc* Loc = pet_tree_get_loc(Tree);
+  //   pet_expr* Expr = pet_tree_expr_get_expr(Tree);
+
+  //   printf(" -> line %d\n", pet_loc_get_line(Loc));
+
+  //   auto printExpr = [](__isl_keep pet_expr *expr, void *user) {
+
+  //     //pet_expr_dump(expr);
+  //     if(pet_expr_access_is_read(expr) || pet_expr_access_is_write(expr)) {
+  //       isl::id RefId = isl::manage(pet_expr_access_get_ref_id(expr));
+  //       isl::multi_pw_aff Index = isl::manage(pet_expr_access_get_index(expr));
+  //       // filter the array accesses
+  //       if(Index.dim(isl::dim::out) > 0 && Index.has_tuple_id(isl::dim::out)) {
+  //         std::string Name = RefId.to_str();
+  //         //Index.dump();
+          
+  //         std::string Array = Index.get_tuple_name(isl::dim::out);
+  //         printf(" - Access %s %s\n", Name.c_str(), Array.c_str());
+
+  //         // process the array dimensions
+  //         for(int i=0; i<Index.dim(isl::dim::out); ++i) {
+  //           std::vector<std::string> Expressions;
+  //           auto IndexExpr = Index.get_pw_aff(i);
+  //           auto extractExpr = [&](isl::set Set, isl::aff Aff) {
+
+  //             Aff.dump();
+
+  //             printf(" -> manually %s\n", isl::printExpression(Aff).c_str());
+
+  //             return isl::stat::ok();
+  //           };
+  //           IndexExpr.foreach_piece(extractExpr);
+  //         }
+
+  //         //Index.e
+  //         std::string Access = Index.domain().to_str();
+
+  //       }
+
+  //     }
+
+
+  //     return 0;
+  //   };
+
+  //   pet_expr_foreach_access_expr(Expr, printExpr, nullptr);
+
+  //   pet_expr_free(Expr);
+  //   pet_loc_free(Loc);
+
+  //   // Stmt->
+  //   // printf("Stmt->n_arg %d\n", Stmt->n_arg);
+  //   // for (int idx = 0; idx < Stmt->n_arg; idx++) {
+  //   //   pet_expr* Expr = Stmt->args[idx];
+
+  //   //   printf(" -> expression %d\n", idx);
+  //   //   pet_expr_dump(Expr);
+  //   //}
+    
+  // }
+  //pet_scop_dump(PetScop);
 
   pet_scop_free(PetScop);
   processScop();
