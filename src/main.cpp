@@ -63,11 +63,9 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   printf("-> done\n");
   // compute the total time
   auto StartExecution = std::chrono::high_resolution_clock::now();
-  printf("-> searching scop\n");
   // allocate the cache model and compile the program
   HayStack Model(Context, MachineModel);
   Model.compileProgram(Variables["input-file"].as<std::string>());
-  printf("-> done\n");
   // run the preprocessing
   printf("-> start preprocessing...\n");
   auto StartPreprocessing = std::chrono::high_resolution_clock::now();
@@ -112,6 +110,8 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
     // print header
     const int Width = 16;
     printf("-------------------------------------------------------------------------------\n");
+    printf("                  relative number of cache misses (Statement)                  \n");
+    printf("-------------------------------------------------------------------------------\n");
     std::cout << std::setw(Width) << std::left << "acc";
     std::cout << std::setw(Width/2) << std::left << "rd/wr";
     std::cout << std::setw(Width) << std::left << "comp[%]";
@@ -139,8 +139,7 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
                   << 100.0 * (double)Capacity[i] / (double)TotalAccesses;
       }
       std::cout << std::setw(Width) << std::left << std::setprecision(4) << std::fixed
-                << 100.0 * (double)Total / (double)TotalAccesses;
-      std::cout << std::endl;
+                << 100.0 * (double)Total / (double)TotalAccesses << std::endl;
     }
     printf("-------------------------------------------------------------------------------\n");
   }
@@ -148,88 +147,18 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   SourceFile.close();
   // print the scop info
   printf("-------------------------------------------------------------------------------\n");
+  printf("                     absolute number of cache misses (SCOP)                    \n");
+  printf("-------------------------------------------------------------------------------\n");
   printf(" - compulsory misses:\t\t%ld\n", TotalCompulsory);
   for (int i = 1; i <= MachineModel.CacheSizes.size(); ++i)
     printf(" - capacity misses (L%d):\t%ld\n", i, TotalCapacity[i - 1]);
   printf(" - memory accesses:\t\t%ld\n", TotalAccesses);
   printf("-------------------------------------------------------------------------------\n");
 
-  //     // print intermediate results if verbose is true
-  //     if (Variables["verbose"].as<bool>()) {
-  //       std::cout << std::fixed;
-  //       std::cout << std::setprecision(2);
-  //       std::cout << "   -> " << CacheMiss.first << " counted ";
-  //       std::cout << CacheMiss.second.CompulsoryMisses << "/";
-  //       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
-  //         std::cout << CacheMiss.second.CapacityMisses[i] << "/";
-  //       }
-  //       std::cout << CacheMiss.second.Total << " (CO/";
-  //       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i)
-  //         std::cout << "CA" << i << "/";
-  //       std::cout << "TO) ";
-  // #ifdef PREFETCHING
-  //       std::cout << "using ";
-  //       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
-  //         int Streams = 0;
-  //         if (CacheMiss.second.PrefetchInfo.Prefetched[i])
-  //           Streams = CacheMiss.second.PrefetchInfo.PrefetchStreams[i];
-  //         std::cout << Streams;
-  //         if (i != MachineModel.CacheSizes.size() - 1)
-  //           std::cout << "/";
-  //       }
-  //       std::cout << " prefetch streams ";
-  // #endif
-  //       std::cout << "\n";
-  //     }
+  // TODO conflicts
+  // TODO prefetching
+  // TODO check why tests are not rebuilt
 
-  // // print the summary
-  // std::cout << std::fixed;
-  // std::cout << std::setprecision(2);
-  // std::cout << "-> done (" << TotalEvaluation << "ms) accumulated ";
-  // std::cout << TotalCompulsory << "/";
-  // for (int i = 0; i < MachineModel.CacheSizes.size(); ++i)
-  //   std::cout << TotalCapacity[i] << "/";
-  // std::cout << TotalAccesses << " (CO/";
-  // for (int i = 0; i < MachineModel.CacheSizes.size(); ++i)
-  //   std::cout << "CA" << i << "/";
-  // std::cout << "TO) cache misses\n";
-  // // print timing information
-  // auto StopExecution = std::chrono::high_resolution_clock::now();
-  // double TotalExecution = std::chrono::duration<double, std::milli>(StopExecution - StartExecution).count();
-  // printf("-> finished after (%.2fms)\n", TotalExecution);
-  // // print the conflicts
-  // auto Conflicts = Model.getConflicts();
-  // if (Conflicts.size() > 0) {
-  //   std::cout << "==================================================" << std::endl;
-  //   for (auto Conflict : Conflicts) {
-  //     std::cout << " - " << Conflict.first << ": ";
-  //     for (auto Name : Conflict.second) {
-  //       std::cout << Name << " ";
-  //     }
-  //     std::cout << std::endl;
-  //   }
-  //   std::cout << "==================================================" << std::endl;
-  // }
-
-  // // compute cache miss curve
-  // std::cout << "==================================================" <<
-  // std::endl; std::vector<long> CacheSizes; for (int i = 1 * 1024; i <=
-  // CACHE_SIZE2; i *= 2)
-  //   CacheSizes.push_back(i);
-  // // compute the misses
-  // auto Accesses = Model.countCacheMisses(CacheSizes);
-  // for (int i = 0; i < CacheSizes.size(); ++i) {
-  //   // compute total number of memory accesses
-  //   long MissCount = TotalCompulsory;
-  //   for (auto Access : Accesses) {
-  //     MissCount += Access.second[i];
-  //   }
-  //   double MissRate = 100.0 * (double)MissCount / (double)TotalAccesses;
-  //   std::cout << std::setprecision(1) << MissRate << " ";
-  // }
-  // std::cout << std::endl;
-  // std::cout << "==================================================" <<
-  // std::endl;
 }
 
 int main(int argc, const char **args) {
@@ -242,8 +171,7 @@ int main(int argc, const char **args) {
          "cache sizes in kilo byte")                                                                         //
         ("line-size,l", po::value<long>()->default_value(CACHE_LINE_SIZE), "cache-line size in byte")        //
         ("input-file,f", po::value<std::string>(), "specify the source file [file name]")                    //
-        ("include-path,I", po::value<std::vector<std::string>>(), "specify the include path [include path]") //
-        ("verbose,v", po::value<bool>()->default_value(false), "print additional information");
+        ("include-path,I", po::value<std::vector<std::string>>(), "specify the include path [include path]");
 
     // parse the program options
     po::variables_map Variables;

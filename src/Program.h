@@ -32,7 +32,7 @@ public:
 private:
   void extractReferences();
   void extendSchedule();
-  isl::union_map extendAccesses(isl::union_map Accesses);
+  isl::union_map extendAccesses(isl::union_map Accesses, bool WriteReferences);
   isl::map introduceCacheLines(std::string Name, isl::map AccessToArray, long ElementsPerCacheLine) const;
   isl::map introduceCacheSets(std::string Name, isl::map AccessToArray, long NumberOfCacheSets) const;
 
@@ -54,7 +54,6 @@ private:
   // read and write references per statement
   std::map<std::string, std::vector<std::string>> ReadReferences_;
   std::map<std::string, std::vector<std::string>> WriteReferences_;
-  std::map<std::string, std::vector<std::string>> AllReferences_;
 
   // location info for scop and memory accesses
   std::pair<unsigned, unsigned> ScopLoc_;

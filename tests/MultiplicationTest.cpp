@@ -30,7 +30,7 @@ void emulateMultiplication(int N1, int N2, int N3, int CacheLineSize, CacheEmula
     for (int k = 0; k < N3; k++) {
       for (int j = 0; j < N2; j++)
         // C[i][j] += alpha * A[i][k] * B[k][j];
-        Emulator.accessMemory("S1", TimeStamp, {CLA(i, k), CLB(k, j), CLC(i, j), CLC(i, j)});
+        Emulator.accessMemory("S1", TimeStamp, {CLC(i, j), CLA(i, k), CLB(k, j), CLC(i, j)});
     }
   }
 }

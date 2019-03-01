@@ -68,20 +68,20 @@ void Program::extractScop(std::string SourceFile) {
             IndexExpr.foreach_piece(extractExpr);
           }
           // find the access info
-          auto AccessInfos = (std::vector<access_info>*)User;
+          auto AccessInfos = (std::vector<access_info> *)User;
           auto Iter = AccessInfos->begin();
           do {
             // find the pet references and update the access description
             Iter = std::find_if(Iter, AccessInfos->end(), [&](access_info AccessInfo) {
-              if(AccessInfo.Access == Name) 
+              if (AccessInfo.Access == Name)
                 return true;
               return false;
             });
-            if(Iter->Access == Name) {
+            if (Iter->Access == Name) {
               Iter->Access = Access;
               Iter++;
             }
-          } while(Iter != AccessInfos->end());
+          } while (Iter != AccessInfos->end());
         }
       }
       return 0;
@@ -104,8 +104,8 @@ void Program::extractScop(std::string SourceFile) {
 
   // extend the schedule and the read and write maps with an access dimension
   extendSchedule();
-  Reads_ = extendAccesses(Reads_);
-  Writes_ = extendAccesses(Writes_);
+  Reads_ = extendAccesses(Reads_, false);
+  Writes_ = extendAccesses(Writes_, true);
 
   // compute the access domain
   AccessDomain_ = Reads_.domain().unite(Writes_.domain()).coalesce();
@@ -169,17 +169,19 @@ void Program::extractReferences() {
   Writes_.foreach_map(extractWrites);
 
   // sort the references
+  auto compare = [](std::string &S1, std::string &S2) {
+    if (S1.length() == S2.length())
+      return S1 < S2;
+    else
+      return S1.length() < S2.length();
+  };
   for (auto &ReadReferences : ReadReferences_)
-    std::sort(ReadReferences.second.begin(), ReadReferences.second.end());
+    std::sort(ReadReferences.second.begin(), ReadReferences.second.end(), compare);
   for (auto &WriteReferences : WriteReferences_)
-    std::sort(WriteReferences.second.begin(), WriteReferences.second.end());
-  // concatenate reads and writes
-  AllReferences_ = ReadReferences_;
-  for (auto &WriteReferences : WriteReferences_)
-    std::copy(WriteReferences.second.begin(), WriteReferences.second.end(),
-              std::back_inserter(AllReferences_[WriteReferences.first]));
+    std::sort(WriteReferences.second.begin(), WriteReferences.second.end(), compare);
 
   // compute the access info
+  AccessInfos_.clear();
   for (auto &ReadReferences : ReadReferences_) {
     for (int i = 0; i < ReadReferences.second.size(); ++i) {
       AccessInfos_[ReadReferences.first].push_back(
@@ -194,7 +196,7 @@ void Program::extractReferences() {
   }
 }
 
-isl::union_map Program::extendAccesses(isl::union_map Accesses) {
+isl::union_map Program::extendAccesses(isl::union_map Accesses, bool WriteReferences) {
   // extend the access map
   isl::union_map AccessesExt = isl::map::empty(Accesses.get_space());
   auto extendAccesses = [&](isl::map Access) {
@@ -203,15 +205,22 @@ isl::union_map Program::extendAccesses(isl::union_map Accesses) {
     std::string Array = Access.get_tuple_name(isl::dim::out);
     if (ElementSizes_.count(Array) > 0) {
       // get the reference offset
-      auto Iter = std::find(AllReferences_[Statement].begin(), AllReferences_[Statement].end(), Reference);
-      assert(Iter != AllReferences_[Statement].end());
+      long Distance = 0;
+      if (WriteReferences) {
+        auto Iter = std::find(WriteReferences_[Statement].begin(), WriteReferences_[Statement].end(), Reference);
+        assert(Iter != WriteReferences_[Statement].end());
+        Distance = std::distance(WriteReferences_[Statement].begin(), Iter) + ReadReferences_[Statement].size();
+      } else {
+        auto Iter = std::find(ReadReferences_[Statement].begin(), ReadReferences_[Statement].end(), Reference);
+        assert(Iter != ReadReferences_[Statement].end());
+        Distance = std::distance(ReadReferences_[Statement].begin(), Iter);
+      }
       // extend the map with the offset
       Access = Access.insert_dims(isl::dim::in, Access.dim(isl::dim::in), 1);
       Access = Access.set_tuple_name(isl::dim::in, Statement);
       // set the offset number
       isl::local_space LSIn = isl::local_space(Access.domain().get_space());
       isl::pw_aff VarIn = isl::pw_aff::var_on_domain(LSIn, isl::dim::set, Access.dim(isl::dim::in) - 1);
-      auto Distance = std::distance(AllReferences_[Statement].begin(), Iter);
       isl::pw_aff Offset = VarIn * 0 + Distance;
       isl::set EqualConstraint = VarIn.eq_set(Offset);
       Access = Access.intersect_domain(EqualConstraint);
