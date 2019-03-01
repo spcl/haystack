@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <numeric>
 #include <string>
 #include <vector>
 
@@ -27,6 +28,15 @@ bool check_path(std::string path) {
   return f.good();
 }
 
+void print_scop(std::ifstream &SourceFile, int Length) {
+  char *Buffer = new char[Length + 1];
+  Buffer[Length] = 0;
+  SourceFile.read(Buffer, Length);
+  printf("%s", &Buffer[0]);
+  delete Buffer;
+}
+
+// define print operators
 namespace std {
 std::ostream &operator<<(std::ostream &os, const std::vector<long> &vec) {
   for (int i = 0; i < vec.size(); ++i) {
@@ -57,20 +67,6 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   // allocate the cache model and compile the program
   HayStack Model(Context, MachineModel);
   Model.compileProgram(Variables["input-file"].as<std::string>());
-
-  // // read the corresponding bytes of the input file
-  // auto ScopLoc = Model.getScopLoc();
-  // std::ifstream SourceFile;
-  // SourceFile.open(Variables["input-file"].as<std::string>());
-  // SourceFile.seekg(ScopLoc.first, std::ios::beg);
-  // size_t Length = ScopLoc.second - ScopLoc.first;
-  // char *Buffer = new char[Length + 1];
-  // Buffer[Length] = 0;
-  // SourceFile.read(Buffer, Length);
-  // printf("%s", &Buffer[0]);
-  // SourceFile.close();
-  // delete Buffer;
-
   printf("-> done\n");
   // run the preprocessing
   printf("-> start preprocessing...\n");
@@ -88,67 +84,132 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   long TotalAccesses = 0;
   long TotalCompulsory = 0;
   std::vector<long> TotalCapacity(MachineModel.CacheSizes.size(), 0);
+  // sum the cache misses for all accesses
   for (auto &CacheMiss : CacheMisses) {
     TotalAccesses += CacheMiss.second.Total;
     TotalCompulsory += CacheMiss.second.CompulsoryMisses;
     std::transform(TotalCapacity.begin(), TotalCapacity.end(), CacheMiss.second.CapacityMisses.begin(),
                    TotalCapacity.begin(), std::plus<long>());
-    //     // print intermediate results if verbose is true
-    //     if (Variables["verbose"].as<bool>()) {
-    //       std::cout << std::fixed;
-    //       std::cout << std::setprecision(2);
-    //       std::cout << "   -> " << CacheMiss.first << " counted ";
-    //       std::cout << CacheMiss.second.CompulsoryMisses << "/";
-    //       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
-    //         std::cout << CacheMiss.second.CapacityMisses[i] << "/";
-    //       }
-    //       std::cout << CacheMiss.second.Total << " (CO/";
-    //       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i)
-    //         std::cout << "CA" << i << "/";
-    //       std::cout << "TO) ";
-    // #ifdef PREFETCHING
-    //       std::cout << "using ";
-    //       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
-    //         int Streams = 0;
-    //         if (CacheMiss.second.PrefetchInfo.Prefetched[i])
-    //           Streams = CacheMiss.second.PrefetchInfo.PrefetchStreams[i];
-    //         std::cout << Streams;
-    //         if (i != MachineModel.CacheSizes.size() - 1)
-    //           std::cout << "/";
-    //       }
-    //       std::cout << " prefetch streams ";
-    // #endif
-    //       std::cout << "\n";
-    //     }
+  };
+  // open the input file and seek the start of the scop
+  auto ScopLoc = Model.getScopLoc();
+  int Pos = ScopLoc.first;
+  std::ifstream SourceFile;
+  SourceFile.open(Variables["input-file"].as<std::string>());
+  SourceFile.seekg(Pos, std::ios::beg);
+  // print the access infos sorted by position
+  std::map<long, std::vector<access_info>> Ordered;
+  for (auto AccessInfos : Model.getAccessInfos()) {
+    if(AccessInfos.second.empty())
+      continue;
+    Ordered[AccessInfos.second[0].Stop] = AccessInfos.second;
   }
-  // print the summary
-  std::cout << std::fixed;
-  std::cout << std::setprecision(2);
-  std::cout << "-> done (" << TotalEvaluation << "ms) accumulated ";
-  std::cout << TotalCompulsory << "/";
-  for (int i = 0; i < MachineModel.CacheSizes.size(); ++i)
-    std::cout << TotalCapacity[i] << "/";
-  std::cout << TotalAccesses << " (CO/";
-  for (int i = 0; i < MachineModel.CacheSizes.size(); ++i)
-    std::cout << "CA" << i << "/";
-  std::cout << "TO) cache misses\n";
-  // print timing information
-  auto StopExecution = std::chrono::high_resolution_clock::now();
-  double TotalExecution = std::chrono::duration<double, std::milli>(StopExecution - StartExecution).count();
-  printf("-> finished after (%.2fms)\n", TotalExecution);
-  // print the conflicts
-  auto Conflicts = Model.getConflicts();
-  if (Conflicts.size() > 0) {
-    std::cout << "==================================================" << std::endl;
-    for (auto Conflict : Conflicts) {
-      std::cout << " - " << Conflict.first << ": ";
-      for (auto Name : Conflict.second) {
-        std::cout << Name << " ";
+  // print the cache info access by access
+  for (auto AccessInfos : Ordered) {
+    // print the sources
+    print_scop(SourceFile, AccessInfos.first - Pos);
+    Pos = AccessInfos.first;
+    // print header
+    const int Width = 16;
+    printf("-------------------------------------------------------------------------------\n");
+    std::cout << std::setw(Width) << std::left << "acc";
+    std::cout << std::setw(Width/2) << std::left << "rd/wr";
+    std::cout << std::setw(Width) << std::left << "comp[%]";
+    for (int i = 1; i <= MachineModel.CacheSizes.size(); ++i) {
+      std::string Capacity = "L" + std::to_string(i) + "[%]";
+      std::cout << std::setw(Width) << std::left << Capacity;
+    }
+    std::cout << std::setw(Width) << std::left << "tot[%]";
+    std::cout << std::endl;
+    // print the accesses
+    for (auto AccessInfo : AccessInfos.second) {
+      std::cout << std::setw(Width) << std::left << AccessInfo.Access;
+      std::cout << std::setw(Width/2) << std::left << (AccessInfo.ReadOrWrite == Read ? "rd" : "wr");
+      // find the actual cache miss info
+      auto Iter = std::find_if(CacheMisses.begin(), CacheMisses.end(),
+                               [&](NamedMisses Misses) { return Misses.first == AccessInfo.Name; });
+      assert(Iter != CacheMisses.end());
+      auto Compulsory = Iter->second.CompulsoryMisses;
+      auto Capacity = Iter->second.CapacityMisses;
+      auto Total = Iter->second.Total;
+      std::cout << std::setw(Width) << std::left << std::setprecision(4) << std::fixed
+                << 100.0 * (double)Compulsory / (double)TotalAccesses;
+      for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
+        std::cout << std::setw(Width) << std::left << std::setprecision(4) << std::fixed
+                  << 100.0 * (double)Capacity[i] / (double)TotalAccesses;
       }
+      std::cout << std::setw(Width) << std::left << std::setprecision(4) << std::fixed
+                << 100.0 * (double)Total / (double)TotalAccesses;
       std::cout << std::endl;
     }
-    std::cout << "==================================================" << std::endl;
+    printf("-------------------------------------------------------------------------------\n");
   }
+  print_scop(SourceFile, ScopLoc.second - Pos);
+  SourceFile.close();
+  // print the scop info
+  printf("-------------------------------------------------------------------------------\n");
+  printf(" - compulsory misses:\t\t%ld\n", TotalCompulsory);
+  for (int i = 1; i <= MachineModel.CacheSizes.size(); ++i)
+    printf(" - capacity misses (L%d):\t%ld\n", i, TotalCapacity[i - 1]);
+  printf(" - memory accesses:\t\t%ld\n", TotalAccesses);
+  printf("-------------------------------------------------------------------------------\n");
+
+  //     // print intermediate results if verbose is true
+  //     if (Variables["verbose"].as<bool>()) {
+  //       std::cout << std::fixed;
+  //       std::cout << std::setprecision(2);
+  //       std::cout << "   -> " << CacheMiss.first << " counted ";
+  //       std::cout << CacheMiss.second.CompulsoryMisses << "/";
+  //       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
+  //         std::cout << CacheMiss.second.CapacityMisses[i] << "/";
+  //       }
+  //       std::cout << CacheMiss.second.Total << " (CO/";
+  //       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i)
+  //         std::cout << "CA" << i << "/";
+  //       std::cout << "TO) ";
+  // #ifdef PREFETCHING
+  //       std::cout << "using ";
+  //       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
+  //         int Streams = 0;
+  //         if (CacheMiss.second.PrefetchInfo.Prefetched[i])
+  //           Streams = CacheMiss.second.PrefetchInfo.PrefetchStreams[i];
+  //         std::cout << Streams;
+  //         if (i != MachineModel.CacheSizes.size() - 1)
+  //           std::cout << "/";
+  //       }
+  //       std::cout << " prefetch streams ";
+  // #endif
+  //       std::cout << "\n";
+  //     }
+
+  // // print the summary
+  // std::cout << std::fixed;
+  // std::cout << std::setprecision(2);
+  // std::cout << "-> done (" << TotalEvaluation << "ms) accumulated ";
+  // std::cout << TotalCompulsory << "/";
+  // for (int i = 0; i < MachineModel.CacheSizes.size(); ++i)
+  //   std::cout << TotalCapacity[i] << "/";
+  // std::cout << TotalAccesses << " (CO/";
+  // for (int i = 0; i < MachineModel.CacheSizes.size(); ++i)
+  //   std::cout << "CA" << i << "/";
+  // std::cout << "TO) cache misses\n";
+  // // print timing information
+  // auto StopExecution = std::chrono::high_resolution_clock::now();
+  // double TotalExecution = std::chrono::duration<double, std::milli>(StopExecution - StartExecution).count();
+  // printf("-> finished after (%.2fms)\n", TotalExecution);
+  // // print the conflicts
+  // auto Conflicts = Model.getConflicts();
+  // if (Conflicts.size() > 0) {
+  //   std::cout << "==================================================" << std::endl;
+  //   for (auto Conflict : Conflicts) {
+  //     std::cout << " - " << Conflict.first << ": ";
+  //     for (auto Name : Conflict.second) {
+  //       std::cout << Name << " ";
+  //     }
+  //     std::cout << std::endl;
+  //   }
+  //   std::cout << "==================================================" << std::endl;
+  // }
 
   // // compute cache miss curve
   // std::cout << "==================================================" <<

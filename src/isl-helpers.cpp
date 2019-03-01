@@ -98,7 +98,7 @@ std::string isl::printExpression(isl::aff Expression) {
     }
     // add the constant
     isl::val Constant = Aff.get_constant_val();
-    if (!Constant.is_zero()) {
+    if (!Constant.is_zero() || isFirst) {
       Result += printValue(Constant.mul(Denominator), false);
       isFirst = false;
     }

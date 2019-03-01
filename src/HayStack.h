@@ -40,6 +40,7 @@ public:
   std::map<std::string, std::vector<std::string>> getConflicts() const { return Conflicts_; }
 
   std::pair<unsigned, unsigned> getScopLoc() const { return Program_.getScopLoc(); }
+  std::map<std::string, std::vector<access_info>> getAccessInfos() const { return Program_.getAccessInfos(); }
 
 private:
   void computeGlobalMaps();
