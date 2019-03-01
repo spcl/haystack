@@ -71,8 +71,13 @@ struct misses {
 };
 
 // struct holding access information
+enum AccessType { Read, Write };
 struct access_info {
+  std::string Name;
   std::string Access;
+  AccessType ReadOrWrite;
+  unsigned Start;
+  unsigned Stop;
   int Line;
 };
 

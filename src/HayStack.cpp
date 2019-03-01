@@ -221,17 +221,9 @@ void HayStack::extractAccesses() {
   // extract the between map accesses
   auto extractAccess = [&](isl::set Set) {
     std::string Statement = Set.get_tuple_name();
-    // compute the reads and writes
-    int Reads = Program_.getNumOfReadReferences(Statement);
-    int Writes = Program_.getNumOfWriteReferences(Statement);
     // iterate the read and write indexes
-    for (int i = 0; i < Reads + Writes; ++i) {
-      // set the name
-      std::string Name = Statement;
-      if (i < Reads)
-        Name += "(R" + std::to_string(i) + ")";
-      else
-        Name += "(W" + std::to_string(i - Reads) + ")";
+    auto AccessInfos = Program_.getAccessInfos()[Statement];
+    for (int i = 0; i < AccessInfos.size(); ++i) {
       // compute the domain
       isl::set Domain = Schedule_.domain().extract_set(Set.get_space());
       Domain = Domain.fix_si(isl::dim::set, Domain.dim(isl::dim::set) - 1, i);
@@ -324,7 +316,7 @@ void HayStack::extractAccesses() {
       prefetch_info Prefetched = {false, {}, {}, {}};
 #endif
       // create the access
-      Access Current(Name, MachineModel_, Domain, Program_.getElementSizes(), Prefetched);
+      Access Current(AccessInfos[i].Name, MachineModel_, Domain, Program_.getElementSizes(), Prefetched);
       Accesses_.push_back(Current);
     }
     return isl::stat::ok();

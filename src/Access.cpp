@@ -81,7 +81,6 @@ void Access::computeStackDistances(isl::union_map BetweenMap) {
         if (!Domain.intersect(BasicMap.domain()).is_empty()) {
           // compute the lower bound for the map
           auto Map = isl::map(BasicMap);
-          // auto Name = Map.get_tuple_name(isl::dim::out);
           auto Norm = Map.sum(Map.lexmin().neg());
           long UpperBound = isl::cardinality(Norm.range());
           if (UpperBound > Limit) {

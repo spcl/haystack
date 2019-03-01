@@ -26,12 +26,12 @@ public:
   isl::union_map getAccessToElement() const { return AccessToElement_; }
   std::map<std::string, long> getElementSizes() const { return ElementSizes_; }
 
-  size_t getNumOfReadReferences(std::string Statement) { return ReadReferences_[Statement].size(); }
-  size_t getNumOfWriteReferences(std::string Statement) { return WriteReferences_[Statement].size(); }
-
+  std::map<std::string, std::vector<access_info>> getAccessInfos() const { return AccessInfos_; }
   std::pair<unsigned, unsigned> getScopLoc() const { return ScopLoc_; };
 
 private:
+  void extractReferences();
+  void extendSchedule();
   isl::union_map extendAccesses(isl::union_map Accesses);
   isl::map introduceCacheLines(std::string Name, isl::map AccessToArray, long ElementsPerCacheLine) const;
   isl::map introduceCacheSets(std::string Name, isl::map AccessToArray, long NumberOfCacheSets) const;
@@ -58,7 +58,7 @@ private:
 
   // location info for scop and memory accesses
   std::pair<unsigned, unsigned> ScopLoc_;
-  std::map<std::string, access_info> AccessInfo_;
+  std::map<std::string, std::vector<access_info>> AccessInfos_;
 };
 
 #endif
