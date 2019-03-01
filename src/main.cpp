@@ -55,9 +55,9 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   std::sort(MachineModel.CacheSizes.begin(), MachineModel.CacheSizes.end());
   for (auto CacheSize : MachineModel.CacheSizes) {
     if (CacheSize % 1024 == 0) {
-      printf("   - %ld kB with %ld B cache lines\n", CacheSize / 1024, MachineModel.CacheLineSize);
+      printf("   - %ldkB with %ldB cache lines\n", CacheSize / 1024, MachineModel.CacheLineSize);
     } else {
-      printf("   - %ld B with %ld B cache lines\n", CacheSize, MachineModel.CacheLineSize);
+      printf("   - %ldB with %ldB cache lines\n", CacheSize, MachineModel.CacheLineSize);
     }
   }
   printf("-> done\n");
@@ -67,17 +67,14 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   HayStack Model(Context, MachineModel);
   Model.compileProgram(Variables["input-file"].as<std::string>());
   // run the preprocessing
-  printf("-> start preprocessing...\n");
-  auto StartPreprocessing = std::chrono::high_resolution_clock::now();
+  printf("-> start processing...\n");
+  auto Start = std::chrono::high_resolution_clock::now();
   Model.initModel();
-  auto StopPreprocessing = std::chrono::high_resolution_clock::now();
-  double TotalPreprocessing = std::chrono::duration<double, std::milli>(StopPreprocessing - StartPreprocessing).count();
-  printf("-> done (%.2fms)\n", TotalPreprocessing);
   // execute the cache model
-  auto StartEvaluation = std::chrono::high_resolution_clock::now();
   auto CacheMisses = Model.countCacheMisses();
-  auto StopEvaluation = std::chrono::high_resolution_clock::now();
-  double TotalEvaluation = std::chrono::duration<double, std::milli>(StopEvaluation - StartEvaluation).count();
+  auto Stop = std::chrono::high_resolution_clock::now();
+  double TotalEvaluation = std::chrono::duration<double, std::milli>(Stop - Start).count();
+  printf("-> done after (%.2fms)\n", TotalEvaluation);
   // collect and print result
   long TotalAccesses = 0;
   long TotalCompulsory = 0;
@@ -98,7 +95,7 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   // print the access infos sorted by position
   std::map<long, std::vector<access_info>> Ordered;
   for (auto AccessInfos : Model.getAccessInfos()) {
-    if(AccessInfos.second.empty())
+    if (AccessInfos.second.empty())
       continue;
     Ordered[AccessInfos.second[0].Stop] = AccessInfos.second;
   }
@@ -108,12 +105,12 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
     print_scop(SourceFile, AccessInfos.first - Pos);
     Pos = AccessInfos.first;
     // print header
-    const int Width = 16;
+    const int Width = 12;
     printf("-------------------------------------------------------------------------------\n");
     printf("                  relative number of cache misses (Statement)                  \n");
     printf("-------------------------------------------------------------------------------\n");
     std::cout << std::setw(Width) << std::left << "acc";
-    std::cout << std::setw(Width/2) << std::left << "rd/wr";
+    std::cout << std::setw(Width) << std::left << "type";
     std::cout << std::setw(Width) << std::left << "comp[%]";
     for (int i = 1; i <= MachineModel.CacheSizes.size(); ++i) {
       std::string Capacity = "L" + std::to_string(i) + "[%]";
@@ -123,8 +120,6 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
     std::cout << std::endl;
     // print the accesses
     for (auto AccessInfo : AccessInfos.second) {
-      std::cout << std::setw(Width) << std::left << AccessInfo.Access;
-      std::cout << std::setw(Width/2) << std::left << (AccessInfo.ReadOrWrite == Read ? "rd" : "wr");
       // find the actual cache miss info
       auto Iter = std::find_if(CacheMisses.begin(), CacheMisses.end(),
                                [&](NamedMisses Misses) { return Misses.first == AccessInfo.Name; });
@@ -132,6 +127,10 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
       auto Compulsory = Iter->second.CompulsoryMisses;
       auto Capacity = Iter->second.CapacityMisses;
       auto Total = Iter->second.Total;
+      // print the access name
+      std::cout << std::setw(Width) << std::left << AccessInfo.Access;
+      // compute the access type
+      std::cout << std::setw(Width) << std::left << (AccessInfo.ReadOrWrite == Read ? "rd" : "wr");
       std::cout << std::setw(Width) << std::left << std::setprecision(4) << std::fixed
                 << 100.0 * (double)Compulsory / (double)TotalAccesses;
       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
@@ -158,7 +157,6 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   // TODO conflicts
   // TODO prefetching
   // TODO check why tests are not rebuilt
-
 }
 
 int main(int argc, const char **args) {
@@ -168,9 +166,9 @@ int main(int argc, const char **args) {
     Descriptor.add_options()                    //
         ("help,h", "print the program options") //
         ("cache-sizes,c", po::value<std::vector<long>>()->multitoken()->default_value({CACHE_SIZE1, CACHE_SIZE2}),
-         "cache sizes in kilo byte")                                                                         //
-        ("line-size,l", po::value<long>()->default_value(CACHE_LINE_SIZE), "cache-line size in byte")        //
-        ("input-file,f", po::value<std::string>(), "specify the source file [file name]")                    //
+         "cache sizes in kilo byte")                                                                  //
+        ("line-size,l", po::value<long>()->default_value(CACHE_LINE_SIZE), "cache-line size in byte") //
+        ("input-file,f", po::value<std::string>(), "specify the source file [file name]")             //
         ("include-path,I", po::value<std::vector<std::string>>(), "specify the include path [include path]");
 
     // parse the program options

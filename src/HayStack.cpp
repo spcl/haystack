@@ -78,7 +78,7 @@ std::vector<NamedMisses> HayStack::countCacheMisses() {
   auto Remaining = SameLineSucc_.reverse();
   for (int i = Space.dim(isl::dim::set) - 1; i >= 0; --i) {
     Timer::startTimer("ComputeBetweenMap");
-    printf("-> processing dimension %d\n", i);
+    //printf("-> processing dimension %d\n", i);
     auto Start = std::chrono::high_resolution_clock::now();
     // compute the filter for the dimension
     isl::local_space LSI = isl::local_space(Universe.domain().get_space());
@@ -110,7 +110,7 @@ std::vector<NamedMisses> HayStack::countCacheMisses() {
     }
     auto Stop = std::chrono::high_resolution_clock::now();
     double Total = std::chrono::duration<double, std::milli>(Stop - Start).count();
-    printf("-> done (%.2fms)\n", Total);
+    //printf("-> done (%.2fms)\n", Total);
   }
 #else
   Timer::startTimer("ComputeBetweenMap");
