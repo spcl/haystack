@@ -9,6 +9,7 @@
 #include <numeric>
 #include <string>
 #include <vector>
+#include <locale>
 
 #include <isl/options.h>
 
@@ -100,23 +101,23 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
     Ordered[AccessInfos.second[0].Stop] = AccessInfos.second;
   }
   // print the cache info access by access
+  printf("-------------------------------------------------------------------------------\n");
   for (auto AccessInfos : Ordered) {
     // print the sources
     print_scop(SourceFile, AccessInfos.first - Pos);
     Pos = AccessInfos.first;
     // print header
-    const int Width = 12;
     printf("-------------------------------------------------------------------------------\n");
     printf("                  relative number of cache misses (Statement)                  \n");
     printf("-------------------------------------------------------------------------------\n");
-    std::cout << std::setw(Width) << std::left << "acc";
-    std::cout << std::setw(Width) << std::left << "type";
-    std::cout << std::setw(Width) << std::left << "comp[%]";
+    std::cout << std::setw(16) << std::left << "acc";
+    std::cout << std::setw(12) << std::left << "type";
+    std::cout << std::setw(12) << std::left << "comp[%]";
     for (int i = 1; i <= MachineModel.CacheSizes.size(); ++i) {
       std::string Capacity = "L" + std::to_string(i) + "[%]";
-      std::cout << std::setw(Width) << std::left << Capacity;
+      std::cout << std::setw(12) << std::left << Capacity;
     }
-    std::cout << std::setw(Width) << std::left << "tot[%]";
+    std::cout << std::setw(12) << std::left << "tot[%]";
     std::cout << std::endl;
     // print the accesses
     for (auto AccessInfo : AccessInfos.second) {
@@ -128,16 +129,16 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
       auto Capacity = Iter->second.CapacityMisses;
       auto Total = Iter->second.Total;
       // print the access name
-      std::cout << std::setw(Width) << std::left << AccessInfo.Access;
+      std::cout << std::setw(16) << std::left << AccessInfo.Access;
       // compute the access type
-      std::cout << std::setw(Width) << std::left << (AccessInfo.ReadOrWrite == Read ? "rd" : "wr");
-      std::cout << std::setw(Width) << std::left << std::setprecision(4) << std::fixed
+      std::cout << std::setw(12) << std::left << (AccessInfo.ReadOrWrite == Read ? "rd" : "wr");
+      std::cout << std::setw(12) << std::left << std::setprecision(4) << std::fixed
                 << 100.0 * (double)Compulsory / (double)TotalAccesses;
       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
-        std::cout << std::setw(Width) << std::left << std::setprecision(4) << std::fixed
+        std::cout << std::setw(12) << std::left << std::setprecision(4) << std::fixed
                   << 100.0 * (double)Capacity[i] / (double)TotalAccesses;
       }
-      std::cout << std::setw(Width) << std::left << std::setprecision(4) << std::fixed
+      std::cout << std::setw(12) << std::left << std::setprecision(4) << std::fixed
                 << 100.0 * (double)Total / (double)TotalAccesses << std::endl;
     }
     printf("-------------------------------------------------------------------------------\n");
@@ -148,10 +149,16 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   printf("-------------------------------------------------------------------------------\n");
   printf("                     absolute number of cache misses (SCOP)                    \n");
   printf("-------------------------------------------------------------------------------\n");
-  printf(" - compulsory misses:\t\t%ld\n", TotalCompulsory);
-  for (int i = 1; i <= MachineModel.CacheSizes.size(); ++i)
-    printf(" - capacity misses (L%d):\t%ld\n", i, TotalCapacity[i - 1]);
-  printf(" - memory accesses:\t\t%ld\n", TotalAccesses);
+  std::cout.imbue(std::locale(""));
+  std::cout << std::setw(16) << std::left << "compulsory:";
+  std::cout << std::setw(20) << std::right << TotalCompulsory << std::endl;
+  for (int i = 1; i <= MachineModel.CacheSizes.size(); ++i) {
+    std::string Capacity = "capacity (L" + std::to_string(i) + ")";
+    std::cout << std::setw(16) << std::left << Capacity;
+    std::cout << std::setw(20) << std::right << TotalCapacity[i - 1] << std::endl;
+  }
+  std::cout << std::setw(16) << std::left << "total:";
+  std::cout << std::setw(20) << std::right << TotalAccesses << std::endl;
   printf("-------------------------------------------------------------------------------\n");
 
   // TODO conflicts

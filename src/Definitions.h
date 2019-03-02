@@ -13,7 +13,7 @@
 #define EQUALIZATION 1
 #define DIMENSION_COUNTING 1
 //#define TIMERS 1
-//#define COMPUTE_BOUNDS 1 // TODO configuration parameters!
+#define COMPUTE_BOUNDS 1 // TODO configuration parameters!
 //#define COMPUTE_CONFLICTS 1
 //#define PREFETCHING 1
 
