@@ -10,7 +10,8 @@ m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
 AC_PROG_CXX
 AM_PROG_AR
-AC_PROG_LIBTOOL
+#LT_INIT([static]) # works only if static libraries are available
+LT_INIT([disable-shared])
 
 AX_BOOST_BASE([1.60.0])
 AX_BOOST_PROGRAM_OPTIONS

@@ -12,11 +12,4 @@ SUBDIRS = $(MAYBE_ISL) $(MAYBE_BARVINOK) $(MAYBE_PET) src tests
 
 ACLOCAL_AMFLAGS = -I m4
 
-# FORCE:
-# isl/libisl.la: FORCE
-# 	cd isl; $(MAKE) $(AM_MAKEFLAGS) libisl.la
-# barvinok/libbarvinok.la: FORCE
-# 	cd barvinok; $(MAKE) $(AM_MAKEFLAGS) libbarvinok.la
-# pet/libpet.la: FORCE
-# 	cd pet; $(MAKE) $(AM_MAKEFLAGS) libpet.la
 

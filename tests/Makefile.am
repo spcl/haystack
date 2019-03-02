@@ -27,6 +27,10 @@ else
     AM_CXXFLAGS = -O3 -DNDEBUG
 endif
 
+FORCE:
+../src/libhaystack.la: FORCE
+	cd ../src; $(MAKE) $(AM_MAKEFLAGS) libhaystack.la
+
 AM_CPPFLAGS = @ISL_CFLAGS@ @BARVINOK_CFLAGS@ @PET_CFLAGS@ 
 LIB_ISL = $(ISL_LA) @ISL_LIBS@
 LIB_BARVINOK = $(BARVINOK_LA) @BARVINOK_LIBS@
@@ -52,7 +56,7 @@ BlinkTest_SOURCES = \
 
 BlinkTest_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS) -I$(top_srcdir)/googletest/googletest/include -I$(top_srcdir)/googletest/googletest -pthread
 BlinkTest_LDFLAGS = -pthread
-BlinkTest_LDADD = libgtest.la ../src/libhaystack.a $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
+BlinkTest_LDADD = libgtest.la ../src/libhaystack.la $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
 
 CopyTest_SOURCES = \
     main.cpp \
@@ -61,7 +65,7 @@ CopyTest_SOURCES = \
 
 CopyTest_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS) -I$(top_srcdir)/googletest/googletest/include -I$(top_srcdir)/googletest/googletest -pthread
 CopyTest_LDFLAGS = -pthread
-CopyTest_LDADD = libgtest.la ../src/libhaystack.a $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
+CopyTest_LDADD = libgtest.la ../src/libhaystack.la $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
 
 
 ToyTest_SOURCES = \
@@ -71,7 +75,7 @@ ToyTest_SOURCES = \
 
 ToyTest_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS) -I$(top_srcdir)/googletest/googletest/include -I$(top_srcdir)/googletest/googletest -pthread
 ToyTest_LDFLAGS = -pthread
-ToyTest_LDADD = libgtest.la ../src/libhaystack.a $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
+ToyTest_LDADD = libgtest.la ../src/libhaystack.la $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
 
 CholeskyTest_SOURCES = \
     main.cpp \
@@ -80,7 +84,7 @@ CholeskyTest_SOURCES = \
 
 CholeskyTest_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS) -I$(top_srcdir)/googletest/googletest/include -I$(top_srcdir)/googletest/googletest -pthread
 CholeskyTest_LDFLAGS = -pthread
-CholeskyTest_LDADD = libgtest.la ../src/libhaystack.a $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
+CholeskyTest_LDADD = libgtest.la ../src/libhaystack.la $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
 
 MultiplicationTest_SOURCES = \
     main.cpp \
@@ -89,7 +93,7 @@ MultiplicationTest_SOURCES = \
 
 MultiplicationTest_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS) -I$(top_srcdir)/googletest/googletest/include -I$(top_srcdir)/googletest/googletest -pthread
 MultiplicationTest_LDFLAGS = -pthread
-MultiplicationTest_LDADD = libgtest.la ../src/libhaystack.a $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
+MultiplicationTest_LDADD = libgtest.la ../src/libhaystack.la $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
 
 StencilTest_SOURCES = \
     main.cpp \
@@ -98,7 +102,7 @@ StencilTest_SOURCES = \
 
 StencilTest_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS) -I$(top_srcdir)/googletest/googletest/include -I$(top_srcdir)/googletest/googletest -pthread
 StencilTest_LDFLAGS = -pthread
-StencilTest_LDADD = libgtest.la ../src/libhaystack.a $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
+StencilTest_LDADD = libgtest.la ../src/libhaystack.la $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
 
 TESTS = ToyTest 
 TESTS += CopyTest 

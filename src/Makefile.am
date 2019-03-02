@@ -28,6 +28,14 @@ else
     AM_CXXFLAGS = -O3 -DNDEBUG
 endif
 
+FORCE:
+../isl/libisl.la: FORCE
+	cd ../isl; $(MAKE) $(AM_MAKEFLAGS) libisl.la
+../barvinok/libbarvinok.la: FORCE
+	cd ../barvinok; $(MAKE) $(AM_MAKEFLAGS) libbarvinok.la
+../pet/libpet.la: FORCE
+	cd ../pet; $(MAKE) $(AM_MAKEFLAGS) libpet.la
+
 AM_CPPFLAGS = @ISL_CFLAGS@ @BARVINOK_CFLAGS@ @PET_CFLAGS@ 
 LIB_ISL = $(ISL_LA) @ISL_LIBS@
 LIB_BARVINOK = $(BARVINOK_LA) @BARVINOK_LIBS@
@@ -36,16 +44,16 @@ LIB_PET = $(PET_LA) @PET_LIBS@
 LINK = $(CXXLINK)
 
 # build the haystack library
-noinst_LIBRARIES = libhaystack.a
-libhaystack_a_SOURCES = \
+noinst_LTLIBRARIES = libhaystack.la
+libhaystack_la_SOURCES = \
     Program.cpp \
     HayStack.cpp \
     Access.cpp \
     isl-helpers.cpp \
     Timer.cpp
 
-libhaystack_a_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS)
-libhaystack_a_LIBADD = $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
+libhaystack_la_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS)
+libhaystack_la_LIBADD = $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
 
 # build the haystack program
 bin_PROGRAMS = haystack
