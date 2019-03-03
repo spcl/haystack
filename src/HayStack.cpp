@@ -133,32 +133,6 @@ std::vector<NamedMisses> HayStack::countCacheMisses() {
     auto CacheMisses = Current.getResult();
     Results.push_back(std::make_pair(Current.getName(), CacheMisses));
   }
-#ifdef PREFETCHING
-  // string based matching
-  std::map<std::vector<int>, std::vector<int>> Streams;
-  std::vector<int> Zeros(MachineModel_.CacheSizes.size(), 0);
-  for (auto &Result : Results) {
-    for (int i = 0; i < MachineModel_.CacheSizes.size(); ++i) {
-      if (Result.second.PrefetchInfo.UnitStride && Result.second.CapacityMisses[i]) {
-        auto Depth = Result.second.PrefetchInfo.PrefetchDepth;
-        while (Depth.size() > 0) {
-          if (Streams[Depth].size() == 0)
-            Streams[Depth] = Zeros;
-          Streams[Depth][i]++;
-          Depth.pop_back();
-        }
-        // set the prefetch flag
-        Result.second.PrefetchInfo.Prefetched[i] = true;
-      }
-    }
-  }
-  // copy stream info to the prefetch info
-  for (auto &Result : Results) {
-    auto Depth = Result.second.PrefetchInfo.PrefetchDepth;
-    if (Streams.count(Depth) > 0)
-      Result.second.PrefetchInfo.PrefetchStreams = Streams[Depth];
-  }
-#endif
   return Results;
 }
 
@@ -227,96 +201,8 @@ void HayStack::extractAccesses() {
       // compute the domain
       isl::set Domain = Schedule_.domain().extract_set(Set.get_space());
       Domain = Domain.fix_si(isl::dim::set, Domain.dim(isl::dim::set) - 1, i);
-#ifdef PREFETCHING
-      Timer::startTimer("ComputePrefetchInfo");
-      // compute the array elements accessed by the next statement instance
-      isl::union_map Schedule = Schedule_.intersect_domain(Domain);
-      isl::map LexSucc = isl::map::lex_lt(isl::set(Schedule.range()).get_space());
-      isl::union_map Succ = Schedule.apply_range(isl::union_map(LexSucc).intersect_range(Schedule.range()));
-      Succ = Succ.lexmin().apply_range(Schedule.reverse());
-      Succ = Succ.apply_range(Program_.getAccessToElement());
-      // compute the delta for all sub domains
-      int MaxDepth = 0;
-      isl::set MaxSet;
-      bool UnitStride = false;
-      auto searchMaps = [&](isl::map Succ) {
-        auto searchBasicMaps = [&](isl::basic_map Succ) {
-          // get the array name
-          std::string Name = Succ.range().get_tuple_name();
-          int ElementsPerCacheLine = Program_.getElementSizes()[Name];
-          // compute the last variable dimension
-          isl::union_set Depth = Schedule.reverse().apply_range(Succ).domain();
-          int LastDepth = 0;
-          isl::set LastSet;
-          auto computeDepth = [&](isl::set Depth) {
-            // drop project out dimensions until the set shrinks
-            long Cardinality = isl::cardinality(Depth);
-            int Dimension = 0;
-            isl::set Set;
-            do {
-              Set = Depth.project_out(isl::dim::set, Dimension, Depth.dim(isl::dim::set) - Dimension);
-              if (isl::cardinality(Set) == Cardinality)
-                break;
-              Dimension++;
-            } while (Dimension < Depth.dim(isl::dim::set));
-            if (LastDepth < Dimension) {
-              LastDepth = Dimension;
-              LastSet = Set;
-            }
-            return isl::stat::ok();
-          };
-          Depth.foreach_set(computeDepth);
-          // if the last dimension is larger than for the previous successor cases
-          if (LastDepth > MaxDepth) {
-            // compute the delta
-            isl::map AccessToElement = Program_.getAccessToElement().extract_map(Succ.get_space());
-            isl::set Delta = AccessToElement.reverse().apply_range(Succ).deltas();
-            // compute the prefetchable strides
-            isl::set Close = isl::set::universe(Delta.get_space());
-            isl::set Same = isl::set::universe(Delta.get_space());
-            for (int i = 0; i < Delta.dim(isl::dim::set) - 1; ++i) {
-              Close = Close.fix_si(isl::dim::set, i, 0);
-              Same = Same.fix_si(isl::dim::set, i, 0);
-            }
-            Close = Close.upper_bound_si(isl::dim::set, Delta.dim(isl::dim::set) - 1, ElementsPerCacheLine);
-            Close = Close.lower_bound_si(isl::dim::set, Delta.dim(isl::dim::set) - 1, -ElementsPerCacheLine);
-            Same = Same.fix_si(isl::dim::set, Delta.dim(isl::dim::set) - 1, 0);
-            // set prefetchable if not the same is accessed
-            if (Close.intersect(Delta).is_empty()) {
-              MaxDepth = LastDepth;
-              UnitStride = false;
-            } else if (Same.intersect(Delta).is_empty()) {
-              UnitStride = true;
-              MaxDepth = LastDepth;
-              MaxSet = LastSet;
-            }
-          }
-          return isl::stat::ok();
-        };
-        Succ.foreach_basic_map(searchBasicMaps);
-        return isl::stat::ok();
-      };
-      Succ.foreach_map(searchMaps);
-      // initialize the prefetch info
-      std::vector<int> PrefetchDepth;
-      if (!MaxSet.is_null()) {
-        for (int i = 0; i < MaxDepth; ++i) {
-          long Minimum = isl::computeMinimum(MaxSet, i);
-          long Maximum = isl::computeMaximum(MaxSet, i);
-          if (Minimum == Maximum) {
-            PrefetchDepth.push_back(Minimum);
-          }
-        }
-      }
-      std::vector<int> Zeros(MachineModel_.CacheSizes.size(), 0);
-      std::vector<bool> NotTrue(MachineModel_.CacheSizes.size(), false);
-      prefetch_info Prefetched = {UnitStride, PrefetchDepth, Zeros, NotTrue};
-      Timer::stopTimer("ComputePrefetchInfo");
-#else
-      prefetch_info Prefetched = {false, {}, {}, {}};
-#endif
       // create the access
-      Access Current(AccessInfos[i].Name, MachineModel_, Domain, Program_.getElementSizes(), Prefetched);
+      Access Current(AccessInfos[i].Name, MachineModel_, Domain, Program_.getElementSizes());
       Accesses_.push_back(Current);
     }
     return isl::stat::ok();

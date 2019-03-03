@@ -14,9 +14,8 @@
 #define DIMENSION_COUNTING 1
 //#define TIMERS 1
 #define COMPUTE_BOUNDS 1 // TODO configuration parameters!
-//#define COMPUTE_CONFLICTS 1
-//#define PREFETCHING 1
 
+//#define COMPUTE_CONFLICTS 1
 //#define ENUMERATE_POINTS 1
 
 // flags to control the verification steps
@@ -53,21 +52,12 @@ struct piece {
   isl::pw_aff Expression;
 };
 
-// struct holding prefetch info
-struct prefetch_info {
-  bool UnitStride;
-  std::vector<int> PrefetchDepth;
-  std::vector<int> PrefetchStreams;
-  std::vector<bool> Prefetched;
-};
-
 // struct holding the cache misses and compute statistics
 struct misses {
   long Total;
   long Counted;
   long CompulsoryMisses;
   std::vector<long> CapacityMisses;
-  prefetch_info PrefetchInfo;
 };
 
 // struct holding access information

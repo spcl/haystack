@@ -61,6 +61,6 @@ haystack_SOURCES = main.cpp
 
 haystack_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS)
 haystack_LDFLAGS = -static $(BOOST_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIB)
-haystack_LDADD = libhaystack.a $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
+haystack_LDADD = libhaystack.la $(LIB_ISL) $(LIB_BARVINOK) $(LIB_PET)
 
 

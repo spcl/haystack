@@ -22,8 +22,6 @@ void Access::initAccess(std::vector<NamedLong> ParameterValues, isl::set Paramet
   Parameters_ = Parameters;
   // compute the number of cache levels
   long CacheLevels = MachineModel_.CacheSizes.size();
-  // clear the statistics
-  Result_.PrefetchInfo = Prefetched_;
   // number of cache misses
   Result_.CompulsoryMisses = 0;
   Result_.CapacityMisses = std::vector<long>(CacheLevels, 0);

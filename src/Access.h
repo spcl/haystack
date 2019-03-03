@@ -14,10 +14,8 @@ class Access {
 public:
   Access() = delete;
   Access(const Access &other) = default;
-  Access(std::string Name, machine_model MachineModel, isl::set Domain, std::map<std::string, long> ElementSizes,
-         prefetch_info Prefetched)
-      : Name_(Name), MachineModel_(MachineModel), Domain_(Domain), ElementSizes_(ElementSizes),
-        Prefetched_(Prefetched) {}
+  Access(std::string Name, machine_model MachineModel, isl::set Domain, std::map<std::string, long> ElementSizes)
+      : Name_(Name), MachineModel_(MachineModel), Domain_(Domain), ElementSizes_(ElementSizes) {}
 
   // control the cache miss computation
   void initAccess(std::vector<NamedLong> ParameterValues, isl::set Parameters);
@@ -82,7 +80,6 @@ private:
   isl::set Domain_;
   machine_model MachineModel_;
   std::map<std::string, long> ElementSizes_;
-  prefetch_info Prefetched_;
 
   isl::set Parameters_;
   std::vector<NamedLong> ParameterValues_;

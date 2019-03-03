@@ -6,10 +6,10 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <locale>
 #include <numeric>
 #include <string>
 #include <vector>
-#include <locale>
 
 #include <isl/options.h>
 
@@ -131,7 +131,8 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
       // print the access name
       std::cout << std::setw(16) << std::left << AccessInfo.Access;
       // compute the access type
-      std::cout << std::setw(12) << std::left << (AccessInfo.ReadOrWrite == Read ? "rd" : "wr");
+      std::string Type = AccessInfo.ReadOrWrite == Read ? "rd" : "wr";
+      std::cout << std::setw(12) << std::left << Type;
       std::cout << std::setw(12) << std::left << std::setprecision(4) << std::fixed
                 << 100.0 * (double)Compulsory / (double)TotalAccesses;
       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
@@ -162,8 +163,6 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   printf("-------------------------------------------------------------------------------\n");
 
   // TODO conflicts
-  // TODO prefetching
-  // TODO check why tests are not rebuilt
 }
 
 int main(int argc, const char **args) {
