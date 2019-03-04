@@ -4,8 +4,9 @@
 #include "isl-helpers.h"
 #include "op.h"
 
-void Program::extractScop(std::string SourceFile) {
-  pet_scop *PetScop = pet_scop_extract_from_C_source(Context_.get(), SourceFile.c_str(), NULL);
+void Program::extractScop(std::string SourceFile, std::string ScopFunction) {
+  const char *Function = ScopFunction.empty() ? NULL : ScopFunction.c_str();
+  pet_scop *PetScop = pet_scop_extract_from_C_source(Context_.get(), SourceFile.c_str(), Function);
   if (PetScop == nullptr) {
     printf("-> exit(-1) cannot extract scope\n");
     exit(-1);

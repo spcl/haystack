@@ -1,5 +1,5 @@
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 #include <limits>
 
 #include "HayStack.h"
@@ -25,7 +25,10 @@ isl_ctx *allocateContextWithIncludePaths(std::vector<std::string> IncludePaths) 
   return isl_ctx_alloc_with_options(&pet_options_args, options);
 }
 
-void HayStack::compileProgram(std::string SourceFile) { Program_.extractScop(SourceFile); }
+void HayStack::compileProgram(std::string SourceFile) { compileProgram(SourceFile, ""); }
+void HayStack::compileProgram(std::string SourceFile, std::string ScopFunction) {
+  Program_.extractScop(SourceFile, ScopFunction);
+}
 
 void HayStack::initModel(std::vector<NamedLong> Parameters) {
   assert(!Program_.getSchedule().is_null());
@@ -78,7 +81,7 @@ std::vector<NamedMisses> HayStack::countCacheMisses() {
   auto Remaining = SameLineSucc_.reverse();
   for (int i = Space.dim(isl::dim::set) - 1; i >= 0; --i) {
     Timer::startTimer("ComputeBetweenMap");
-    //printf("-> processing dimension %d\n", i);
+    // printf("-> processing dimension %d\n", i);
     auto Start = std::chrono::high_resolution_clock::now();
     // compute the filter for the dimension
     isl::local_space LSI = isl::local_space(Universe.domain().get_space());
@@ -110,7 +113,7 @@ std::vector<NamedMisses> HayStack::countCacheMisses() {
     }
     auto Stop = std::chrono::high_resolution_clock::now();
     double Total = std::chrono::duration<double, std::milli>(Stop - Start).count();
-    //printf("-> done (%.2fms)\n", Total);
+    // printf("-> done (%.2fms)\n", Total);
   }
 #else
   Timer::startTimer("ComputeBetweenMap");

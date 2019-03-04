@@ -45,6 +45,23 @@ std::map<int, std::string> compute_lines(std::string FileName, std::pair<long, l
   return Result;
 }
 
+std::map<int, std::pair<long, long>> compute_offsets(std::string FileName) {
+  std::map<int, std::pair<long, long>> Result;
+  std::ifstream SourceFile;
+  SourceFile.open(FileName);
+  std::string Line;
+  int LineNumber = 0;
+  long Start = SourceFile.tellg();
+  long End = 0;
+  while (std::getline(SourceFile, Line)) {
+    End = SourceFile.tellg();
+    Result[++LineNumber] = std::make_pair(Start, End);
+    Start = End;
+  }
+  SourceFile.close();
+  return Result;
+}
+
 void print_scop(std::map<int, std::string> &Lines, int Start, int Stop) {
   // compute number of necessary digits
   int Width = std::to_string(Lines.end()->first).length();
@@ -83,7 +100,11 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   auto StartExecution = std::chrono::high_resolution_clock::now();
   // allocate the cache model and compile the program
   HayStack Model(Context, MachineModel);
-  Model.compileProgram(Variables["input-file"].as<std::string>());
+  if (Variables.count("scop-function") == 0) {
+    Model.compileProgram(Variables["input-file"].as<std::string>());
+  } else {
+    Model.compileProgram(Variables["input-file"].as<std::string>(), Variables["scop-function"].as<std::string>());
+  }
   // run the preprocessing
   printf("-> start processing...\n");
   auto Start = std::chrono::high_resolution_clock::now();
@@ -106,14 +127,16 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   };
   // open the input file and seek the start of the scop
   std::map<int, std::string> Lines = compute_lines(Variables["input-file"].as<std::string>(), Model.getScopLoc());
+  std::map<int, std::pair<long, long>> Offsets = compute_offsets(Variables["input-file"].as<std::string>());
   long Position = Lines.begin()->first;
   std::string LineStart;
-  std::string Separator;
-  std::string DSeparator;
+  std::string SingleLine;
+  std::string DoubleLine;
   LineStart.resize(std::to_string(Lines.rbegin()->first).length() + 1, ' ');
-  Separator.resize(80 - LineStart.length(), '-');
-  DSeparator.resize(80, '=');
+  SingleLine.resize(80 - LineStart.length(), '-');
+  DoubleLine.resize(80, '=');
   // print the access infos sorted by position
+  size_t RefWidth = 16;
   std::map<long, std::vector<access_info>> AccessInfosByLn;
   std::map<std::string, access_info> AccessInfoByName;
   for (auto AccessInfos : Model.getAccessInfos()) {
@@ -122,20 +145,25 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
     AccessInfosByLn[AccessInfos.second[0].Line] = AccessInfos.second;
     for (auto AccessInfo : AccessInfos.second) {
       AccessInfoByName[AccessInfo.Name] = AccessInfo;
+      RefWidth = std::max(RefWidth, AccessInfo.Name.length() + 1);
     }
   }
   // print the cache info access by access
-  std::cout << DSeparator << std::endl;
+  std::cout << DoubleLine << std::endl;
   std::cout << "                  relative number of cache misses (Statement)" << std::endl;
-  std::cout << DSeparator << std::endl;
+  std::cout << DoubleLine << std::endl;
   for (auto AccessInfos : AccessInfosByLn) {
+    // determine the last line of multiline
+    int Next = AccessInfos.first;
+    while (Offsets[Next].second < AccessInfos.second[0].Stop) {
+      Next++;
+    }
     // print the sources
-    print_scop(Lines, Position, AccessInfos.first + 1);
-    Position = AccessInfos.first + 1;
-    // // print header
-    std::cout << LineStart << Separator << std::endl;
-    //std::cout << LineStart;
-    std::cout << std::setw(18) << std::right << "memref";
+    print_scop(Lines, Position, Next + 1);
+    Position = Next + 1;
+    // print header
+    std::cout << LineStart << SingleLine << std::endl;
+    std::cout << std::setw(RefWidth) << std::right << "ref";
     std::cout << "  ";
     std::cout << std::setw(6) << std::left << "type";
     std::cout << std::setw(9) << std::left << "comp[%]";
@@ -156,8 +184,7 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
       auto Capacity = Iter->second.CapacityMisses;
       auto Total = Iter->second.Total;
       // print the access info
-      //std::cout << LineStart;
-      std::cout << std::setw(18) << std::right << AccessInfo.Access;
+      std::cout << std::setw(RefWidth) << std::right << AccessInfo.Access;
       std::cout << "  ";
       std::cout << std::setw(6) << std::left << (AccessInfo.ReadOrWrite == Read ? "rd" : "wr");
       std::cout << std::setw(9) << std::left << std::setprecision(4) << std::fixed
@@ -175,23 +202,23 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
       for (auto Conflict : Conflicts) {
         ReuseLines.push_back(AccessInfoByName[Conflict].Line);
       }
+      // sort the line numbers and remove duplicates
       std::sort(ReuseLines.begin(), ReuseLines.end());
-      auto Last = std::unique(ReuseLines.begin(),ReuseLines.end());
-      // 
-      for(auto Iter = ReuseLines.begin(); Iter!=Last;) {
+      auto Last = std::unique(ReuseLines.begin(), ReuseLines.end());
+      for (auto Iter = ReuseLines.begin(); Iter != Last;) {
         std::cout << *Iter;
-        if(++Iter != Last) 
+        if (++Iter != Last)
           std::cout << ",";
       }
       std::cout << std::endl;
     }
-    std::cout << LineStart << Separator << std::endl;
+    std::cout << LineStart << SingleLine << std::endl;
   }
   print_scop(Lines, Position, Lines.rbegin()->first + 1);
   // print the scop info
-  std::cout << DSeparator << std::endl;
+  std::cout << DoubleLine << std::endl;
   std::cout << "                     absolute number of cache misses (SCOP)" << std::endl;
-  std::cout << DSeparator << std::endl;
+  std::cout << DoubleLine << std::endl;
   std::cout.imbue(std::locale(""));
   std::cout << std::setw(16) << std::left << "compulsory:";
   std::cout << std::setw(20) << std::right << TotalCompulsory << std::endl;
@@ -202,7 +229,7 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   }
   std::cout << std::setw(16) << std::left << "total:";
   std::cout << std::setw(20) << std::right << TotalAccesses << std::endl;
-  std::cout << DSeparator << std::endl;
+  std::cout << DoubleLine << std::endl;
 }
 
 int main(int argc, const char **args) {
@@ -212,10 +239,11 @@ int main(int argc, const char **args) {
     Descriptor.add_options()                    //
         ("help,h", "print the program options") //
         ("cache-sizes,c", po::value<std::vector<long>>()->multitoken()->default_value({CACHE_SIZE1, CACHE_SIZE2}),
-         "cache sizes in kilo byte")                                                                  //
-        ("line-size,l", po::value<long>()->default_value(CACHE_LINE_SIZE), "cache-line size in byte") //
-        ("input-file,f", po::value<std::string>(), "specify the source file [file name]")             //
-        ("include-path,I", po::value<std::vector<std::string>>(), "specify the include path [include path]");
+         "cache sizes in byte")                                                                         //
+        ("line-size,l", po::value<long>()->default_value(CACHE_LINE_SIZE), "cache-line size in byte")        //
+        ("input-file,f", po::value<std::string>(), "set the source file [file name]")                    //
+        ("include-path,I", po::value<std::vector<std::string>>(), "set the include path [include path]") //
+        ("scop-function,s", po::value<std::string>(), "set the scop function scop");
 
     // parse the program options
     po::variables_map Variables;
@@ -225,7 +253,6 @@ int main(int argc, const char **args) {
       std::cout << Descriptor << std::endl;
       return 0;
     }
-
     // check if the include paths are valid
     for (int i = 0; i < Variables.count("include-path"); ++i) {
       std::string IncludePath = Variables["include-path"].as<std::vector<std::string>>()[i];
@@ -239,7 +266,6 @@ int main(int argc, const char **args) {
       printf("-> exit(-1) input file %s not found\n", Variables["input-file"].as<std::string>().c_str());
       exit(-1);
     }
-
     // allocate the context outside of the cache model
     std::vector<std::string> IncludePaths;
     if (Variables.count("include-path") > 0)
@@ -254,6 +280,5 @@ int main(int argc, const char **args) {
   } catch (const boost::program_options::error &ex) {
     printf("-> exit(-1) option parsing error: %s\n", ex.what());
   }
-
   return 0;
 }

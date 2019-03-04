@@ -24,6 +24,7 @@ public:
       : Context_(Context), MachineModel_(MachineModel), Program_(P){};
 
   void compileProgram(std::string SourceFile);
+  void compileProgram(std::string SourceFile, std::string ScopFunction);
 
   // initialize the cache model
   void initModel(std::vector<NamedLong> Parameters);
