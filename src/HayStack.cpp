@@ -100,7 +100,7 @@ std::vector<NamedMisses> HayStack::countCacheMisses() {
     Next = Schedule_.apply_range(Next).apply_range(Schedule_.reverse()).coalesce();
     auto After = Next.apply_range(Forward_);
     auto BetweenMap = After.intersect(Before_);
-    addConflicts(BetweenMap);
+    addConflicts(Next);
     BetweenMap = BetweenMap.apply_range(Program_.getAccessToLine());
     BetweenMap = BetweenMap.detect_equalities(); // important
     Timer::stopTimer("ComputeBetweenMap");
@@ -118,7 +118,7 @@ std::vector<NamedMisses> HayStack::countCacheMisses() {
   Next = Schedule_.apply_range(Next).apply_range(Schedule_.reverse()).coalesce();
   auto After = Next.apply_range(Forward_);
   auto BetweenMap = After.intersect(Before_);
-  addConflicts(BetweenMap);
+  addConflicts(Next);
   BetweenMap = BetweenMap.apply_range(Program_.getAccessToLine());
   BetweenMap = BetweenMap.detect_equalities(); // important
   Timer::stopTimer("ComputeBetweenMap");
@@ -211,11 +211,11 @@ void HayStack::extractAccesses() {
   std::sort(Accesses_.begin(), Accesses_.end());
 }
 
-void HayStack::addConflicts(isl::union_map BetweenMap) {
+void HayStack::addConflicts(isl::union_map Next) {
 #ifdef COMPUTE_CONFLICTS
   // count the statements
   for (auto &Source : Accesses_) {
-    auto Destinations = BetweenMap.intersect_domain(Source.getDomain());
+    auto Destinations = Next.intersect_domain(Source.getDomain());
     if (!Destinations.is_empty()) {
       for (auto &Destination : Accesses_) {
         if (!Destinations.intersect_range(Destination.getDomain()).is_empty()) {

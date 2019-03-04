@@ -94,15 +94,19 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   SourceFile.open(Variables["input-file"].as<std::string>());
   SourceFile.seekg(Pos, std::ios::beg);
   // print the access infos sorted by position
-  std::map<long, std::vector<access_info>> Ordered;
+  std::map<long, std::vector<access_info>> AccessInfosByLn;
+  std::map<std::string, access_info> AccessInfoByName;
   for (auto AccessInfos : Model.getAccessInfos()) {
     if (AccessInfos.second.empty())
       continue;
-    Ordered[AccessInfos.second[0].Stop] = AccessInfos.second;
+    AccessInfosByLn[AccessInfos.second[0].Stop] = AccessInfos.second;
+    for(auto AccessInfo : AccessInfos.second) {
+      AccessInfoByName[AccessInfo.Name] = AccessInfo;
+    }
   }
   // print the cache info access by access
   printf("-------------------------------------------------------------------------------\n");
-  for (auto AccessInfos : Ordered) {
+  for (auto AccessInfos : AccessInfosByLn) {
     // print the sources
     print_scop(SourceFile, AccessInfos.first - Pos);
     Pos = AccessInfos.first;
@@ -111,13 +115,14 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
     printf("                  relative number of cache misses (Statement)                  \n");
     printf("-------------------------------------------------------------------------------\n");
     std::cout << std::setw(16) << std::left << "acc";
-    std::cout << std::setw(12) << std::left << "type";
-    std::cout << std::setw(12) << std::left << "comp[%]";
+    std::cout << std::setw(10) << std::left << "type";
+    std::cout << std::setw(10) << std::left << "comp[%]";
     for (int i = 1; i <= MachineModel.CacheSizes.size(); ++i) {
       std::string Capacity = "L" + std::to_string(i) + "[%]";
-      std::cout << std::setw(12) << std::left << Capacity;
+      std::cout << std::setw(10) << std::left << Capacity;
     }
-    std::cout << std::setw(12) << std::left << "tot[%]";
+    std::cout << std::setw(10) << std::left << "tot[%]";
+    std::cout << std::setw(10) << std::left << "reuse[ln]";
     std::cout << std::endl;
     // print the accesses
     for (auto AccessInfo : AccessInfos.second) {
@@ -128,20 +133,38 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
       auto Compulsory = Iter->second.CompulsoryMisses;
       auto Capacity = Iter->second.CapacityMisses;
       auto Total = Iter->second.Total;
-      // print the access name
+      // print the access info
       std::cout << std::setw(16) << std::left << AccessInfo.Access;
-      // compute the access type
-      std::string Type = AccessInfo.ReadOrWrite == Read ? "rd" : "wr";
-      std::cout << std::setw(12) << std::left << Type;
-      std::cout << std::setw(12) << std::left << std::setprecision(4) << std::fixed
+      std::cout << std::setw(10) << std::left << (AccessInfo.ReadOrWrite == Read ? "rd" : "wr");
+      std::cout << std::setw(10) << std::left << std::setprecision(4) << std::fixed
                 << 100.0 * (double)Compulsory / (double)TotalAccesses;
       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
-        std::cout << std::setw(12) << std::left << std::setprecision(4) << std::fixed
+        std::cout << std::setw(10) << std::left << std::setprecision(4) << std::fixed
                   << 100.0 * (double)Capacity[i] / (double)TotalAccesses;
       }
-      std::cout << std::setw(12) << std::left << std::setprecision(4) << std::fixed
-                << 100.0 * (double)Total / (double)TotalAccesses << std::endl;
+      std::cout << std::setw(10) << std::left << std::setprecision(4) << std::fixed
+                << 100.0 * (double)Total / (double)TotalAccesses;
+      // compute the reuse line numbers
+      auto Conflicts = Model.getConflicts()[AccessInfo.Name];
+      if(!Conflicts.empty()) {
+        std::string Reuse;
+        for(auto Conflict: Conflicts) {
+          Reuse += std::to_string(AccessInfoByName[Conflict].Line) + ",";
+        }
+        Reuse = Reuse.substr(0, Reuse.size()-1);
+        std::cout << std::setw(10) << Reuse << std::endl;
+      }
     }
+
+    // // todo compute reuse line numbers!
+    // for(auto Conflict: Model.getConflicts()) {
+    //   std::cout << Conflict.first << ": ";
+    //   for(auto Conflicting: Conflict.second)
+    //     std::cout << Conflicting << "-";
+    //   std::cout << std::endl;
+    // }
+
+
     printf("-------------------------------------------------------------------------------\n");
   }
   print_scop(SourceFile, ScopLoc.second - Pos);
