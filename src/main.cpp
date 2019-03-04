@@ -29,12 +29,29 @@ bool check_path(std::string path) {
   return f.good();
 }
 
-void print_scop(std::ifstream &SourceFile, int Length) {
-  char *Buffer = new char[Length + 1];
-  Buffer[Length] = 0;
-  SourceFile.read(Buffer, Length);
-  printf("%s", &Buffer[0]);
-  delete Buffer;
+std::map<int, std::string> compute_lines(std::string FileName, std::pair<long, long> ScopLoc) {
+  std::map<int, std::string> Result;
+  std::ifstream SourceFile;
+  SourceFile.open(FileName);
+  std::string Line;
+  int LineNumber = 0;
+  while (std::getline(SourceFile, Line)) {
+    LineNumber++;
+    if (SourceFile.tellg() > ScopLoc.first && SourceFile.tellg() <= ScopLoc.second) {
+      Result[LineNumber] = Line;
+    }
+  }
+  SourceFile.close();
+  return Result;
+}
+
+void print_scop(std::map<int, std::string> &Lines, int Start, int Stop) {
+  // compute number of necessary digits
+  int Width = std::to_string(Lines.end()->first).length();
+  for (int i = Start; i < Stop; ++i) {
+    std::cout << std::setw(Width) << std::right << std::to_string(i);
+    std::cout << " " << Lines[i] << std::endl;
+  }
 }
 
 // define print operators
@@ -88,41 +105,46 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
                    TotalCapacity.begin(), std::plus<long>());
   };
   // open the input file and seek the start of the scop
-  auto ScopLoc = Model.getScopLoc();
-  int Pos = ScopLoc.first;
-  std::ifstream SourceFile;
-  SourceFile.open(Variables["input-file"].as<std::string>());
-  SourceFile.seekg(Pos, std::ios::beg);
+  std::map<int, std::string> Lines = compute_lines(Variables["input-file"].as<std::string>(), Model.getScopLoc());
+  long Position = Lines.begin()->first;
+  std::string LineStart;
+  std::string Separator;
+  std::string DSeparator;
+  LineStart.resize(std::to_string(Lines.rbegin()->first).length() + 1, ' ');
+  Separator.resize(80 - LineStart.length(), '-');
+  DSeparator.resize(80, '=');
   // print the access infos sorted by position
   std::map<long, std::vector<access_info>> AccessInfosByLn;
   std::map<std::string, access_info> AccessInfoByName;
   for (auto AccessInfos : Model.getAccessInfos()) {
     if (AccessInfos.second.empty())
       continue;
-    AccessInfosByLn[AccessInfos.second[0].Stop] = AccessInfos.second;
-    for(auto AccessInfo : AccessInfos.second) {
+    AccessInfosByLn[AccessInfos.second[0].Line] = AccessInfos.second;
+    for (auto AccessInfo : AccessInfos.second) {
       AccessInfoByName[AccessInfo.Name] = AccessInfo;
     }
   }
   // print the cache info access by access
-  printf("-------------------------------------------------------------------------------\n");
+  std::cout << DSeparator << std::endl;
+  std::cout << "                  relative number of cache misses (Statement)" << std::endl;
+  std::cout << DSeparator << std::endl;
   for (auto AccessInfos : AccessInfosByLn) {
     // print the sources
-    print_scop(SourceFile, AccessInfos.first - Pos);
-    Pos = AccessInfos.first;
-    // print header
-    printf("-------------------------------------------------------------------------------\n");
-    printf("                  relative number of cache misses (Statement)                  \n");
-    printf("-------------------------------------------------------------------------------\n");
-    std::cout << std::setw(16) << std::left << "acc";
-    std::cout << std::setw(10) << std::left << "type";
-    std::cout << std::setw(10) << std::left << "comp[%]";
+    print_scop(Lines, Position, AccessInfos.first + 1);
+    Position = AccessInfos.first + 1;
+    // // print header
+    std::cout << LineStart << Separator << std::endl;
+    //std::cout << LineStart;
+    std::cout << std::setw(18) << std::right << "memref";
+    std::cout << "  ";
+    std::cout << std::setw(6) << std::left << "type";
+    std::cout << std::setw(9) << std::left << "comp[%]";
     for (int i = 1; i <= MachineModel.CacheSizes.size(); ++i) {
       std::string Capacity = "L" + std::to_string(i) + "[%]";
-      std::cout << std::setw(10) << std::left << Capacity;
+      std::cout << std::setw(9) << std::left << Capacity;
     }
-    std::cout << std::setw(10) << std::left << "tot[%]";
-    std::cout << std::setw(10) << std::left << "reuse[ln]";
+    std::cout << std::setw(9) << std::left << "tot[%]";
+    std::cout << std::setw(9) << std::left << "reuse[ln]";
     std::cout << std::endl;
     // print the accesses
     for (auto AccessInfo : AccessInfos.second) {
@@ -134,45 +156,42 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
       auto Capacity = Iter->second.CapacityMisses;
       auto Total = Iter->second.Total;
       // print the access info
-      std::cout << std::setw(16) << std::left << AccessInfo.Access;
-      std::cout << std::setw(10) << std::left << (AccessInfo.ReadOrWrite == Read ? "rd" : "wr");
-      std::cout << std::setw(10) << std::left << std::setprecision(4) << std::fixed
+      //std::cout << LineStart;
+      std::cout << std::setw(18) << std::right << AccessInfo.Access;
+      std::cout << "  ";
+      std::cout << std::setw(6) << std::left << (AccessInfo.ReadOrWrite == Read ? "rd" : "wr");
+      std::cout << std::setw(9) << std::left << std::setprecision(4) << std::fixed
                 << 100.0 * (double)Compulsory / (double)TotalAccesses;
       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
-        std::cout << std::setw(10) << std::left << std::setprecision(4) << std::fixed
+        std::cout << std::setw(9) << std::left << std::setprecision(4) << std::fixed
                   << 100.0 * (double)Capacity[i] / (double)TotalAccesses;
       }
-      std::cout << std::setw(10) << std::left << std::setprecision(4) << std::fixed
+      std::cout << std::setw(9) << std::left << std::setprecision(4) << std::fixed
                 << 100.0 * (double)Total / (double)TotalAccesses;
       // compute the reuse line numbers
       auto Conflicts = Model.getConflicts()[AccessInfo.Name];
-      if(!Conflicts.empty()) {
-        std::string Reuse;
-        for(auto Conflict: Conflicts) {
-          Reuse += std::to_string(AccessInfoByName[Conflict].Line) + ",";
-        }
-        Reuse = Reuse.substr(0, Reuse.size()-1);
-        std::cout << std::setw(10) << Reuse << std::endl;
+      // compute the reuse line numbers
+      std::vector<int> ReuseLines;
+      for (auto Conflict : Conflicts) {
+        ReuseLines.push_back(AccessInfoByName[Conflict].Line);
       }
+      std::sort(ReuseLines.begin(), ReuseLines.end());
+      auto Last = std::unique(ReuseLines.begin(),ReuseLines.end());
+      // 
+      for(auto Iter = ReuseLines.begin(); Iter!=Last;) {
+        std::cout << *Iter;
+        if(++Iter != Last) 
+          std::cout << ",";
+      }
+      std::cout << std::endl;
     }
-
-    // // todo compute reuse line numbers!
-    // for(auto Conflict: Model.getConflicts()) {
-    //   std::cout << Conflict.first << ": ";
-    //   for(auto Conflicting: Conflict.second)
-    //     std::cout << Conflicting << "-";
-    //   std::cout << std::endl;
-    // }
-
-
-    printf("-------------------------------------------------------------------------------\n");
+    std::cout << LineStart << Separator << std::endl;
   }
-  print_scop(SourceFile, ScopLoc.second - Pos);
-  SourceFile.close();
+  print_scop(Lines, Position, Lines.rbegin()->first + 1);
   // print the scop info
-  printf("-------------------------------------------------------------------------------\n");
-  printf("                     absolute number of cache misses (SCOP)                    \n");
-  printf("-------------------------------------------------------------------------------\n");
+  std::cout << DSeparator << std::endl;
+  std::cout << "                     absolute number of cache misses (SCOP)" << std::endl;
+  std::cout << DSeparator << std::endl;
   std::cout.imbue(std::locale(""));
   std::cout << std::setw(16) << std::left << "compulsory:";
   std::cout << std::setw(20) << std::right << TotalCompulsory << std::endl;
@@ -183,9 +202,7 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   }
   std::cout << std::setw(16) << std::left << "total:";
   std::cout << std::setw(20) << std::right << TotalAccesses << std::endl;
-  printf("-------------------------------------------------------------------------------\n");
-
-  // TODO conflicts
+  std::cout << DSeparator << std::endl;
 }
 
 int main(int argc, const char **args) {
