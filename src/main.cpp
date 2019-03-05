@@ -1,3 +1,6 @@
+/*
+* Copyright 2019, ETH Zurich
+*/
 
 #include <algorithm>
 #include <boost/algorithm/string.hpp>

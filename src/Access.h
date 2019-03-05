@@ -1,3 +1,7 @@
+/*
+* Copyright 2019, ETH Zurich
+*/
+
 #ifndef _ACCESS_H_
 #define _ACCESS_H_
 

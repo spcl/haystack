@@ -1,3 +1,7 @@
+/*
+* Copyright 2019, ETH Zurich
+*/
+
 #ifndef _HAY_STACK_H_
 #define _HAY_STACK_H_
 

@@ -1,3 +1,7 @@
+/*
+* Copyright 2019, ETH Zurich
+*/
+
 #include <cassert>
 
 #include "barvinok/isl.h"

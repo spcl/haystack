@@ -1,3 +1,7 @@
+/*
+* Copyright 2019, ETH Zurich
+*/
+
 #ifndef _ISL_HELPERS_H_
 #define _ISL_HELPERS_H_
 

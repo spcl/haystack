@@ -1,3 +1,7 @@
+/*
+* Copyright 2019, ETH Zurich
+*/
+
 #ifndef _SCOP_H_
 #define _SCOP_H_
 

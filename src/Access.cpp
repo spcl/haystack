@@ -1,3 +1,7 @@
+/*
+* Copyright 2019, ETH Zurich
+*/
+
 #include <boost/math/common_factor.hpp>
 
 #include <algorithm>
