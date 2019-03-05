@@ -57,17 +57,17 @@ void HayStack::initModel(std::vector<NamedLong> Parameters) {
   for (auto &Entry : SortedParameters) {
     ParameterValues_.push_back(Entry.second);
   }
-  // initialize the model
-  initModel();
-}
-
-void HayStack::initModel() {
   // compute the access map
   Program_.computeAccessToLine(Parameters_);
   // compute the between map for all statements
   computeGlobalMaps();
   // extract the access information
   extractAccesses();
+}
+
+void HayStack::initModel() {
+  std::vector<NamedLong> NoParameters;
+  initModel(NoParameters);
 }
 
 std::vector<NamedMisses> HayStack::countCacheMisses() {
