@@ -5,7 +5,7 @@ This software implements the analytical cache model discussed by the paper "A Fa
 ## Installation
 
 Before installing the package make sure you install die following dependencies:
-- clang
+- llvm/clang
 - gmp
 - ntl
 - boost (program options)
@@ -13,7 +13,7 @@ Before installing the package make sure you install die following dependencies:
 
 On Ubuntu systems (18.04) you can install these dependencies using the following command:
 ```
-sudo apt-get install libclang-dev libgmp3-dev libntl-dev libboost-program-options-dev libyaml-dev
+sudo apt-get install llvm-dev libclang-dev libgmp3-dev libntl-dev libboost-program-options-dev libyaml-dev
 ```
 Once all dependencies are installed change to the haystack folder and run the commands:
 ```
