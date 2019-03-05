@@ -46,15 +46,6 @@ long isl::computeMaximum(isl::set Domain, int Dimension) {
   return Maximum;
 }
 
-std::pair<isl::aff, isl::val> isl::get_stride_info(isl::set Set,
-                                                   int Dimension) {
-  isl_stride_info *Info = isl_set_get_stride_info(Set.get(), Dimension);
-  isl::val Stride = isl::manage(isl_stride_info_get_stride(Info));
-  isl::aff Offset = isl::manage(isl_stride_info_get_offset(Info));
-  isl_stride_info_free(Info);
-  return std::make_pair(Offset, Stride);
-}
-
 long isl::cardinality(isl::set Set) {
   return get_value(isl::manage(isl_set_card(isl::set(Set).release())).max());
 }
