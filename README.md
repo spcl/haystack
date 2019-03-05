@@ -63,7 +63,7 @@ The columns provide the following information (assuming fully associative caches
 - tot: number of memory accesses in percent of the total number of memory accesses
 - reuse: line numbers that contain the memory references that last accessed the same cache line (reuse)
 
-The tool additionally reports the absolute numbers of cache misses for the entire scop:
+The tool additionally reports the absolute numbers of cache misses (compulsory and capacity) for the entire scop and the total number of memory accesses (total):
 ```
 compulsory:                  196'608
 capacity (L1)             67'043'328

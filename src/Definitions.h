@@ -1,5 +1,5 @@
 /*
-* Copyright 2019, ETH Zurich
+* Copyright (c) 2019, ETH Zurich
 */
 
 #ifndef _DEFINITIONS_H_
