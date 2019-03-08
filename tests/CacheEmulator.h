@@ -1,3 +1,7 @@
+/*
+* Copyright (c) 2019, ETH Zurich
+*/
+
 #ifndef _CHACHE_EMULATOR_H_
 #define _CHACHE_EMULATOR_H_
 

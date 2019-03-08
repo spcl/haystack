@@ -1,3 +1,7 @@
+/*
+* Copyright (c) 2019, ETH Zurich
+*/
+
 #include "gtest/gtest.h"
 
 #include <isl/options.h>
