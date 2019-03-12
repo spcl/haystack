@@ -9,5 +9,5 @@
 	url = git@github.com:google/googletest.git
 [submodule "isl"]
 	path = isl
-	url = git@github.com:gysit/haystack-isl.git
+	url = git@github.com:spcl/haystack-isl.git
 	branch = master
