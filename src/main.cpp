@@ -169,13 +169,13 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
     std::cout << std::setw(RefWidth) << std::right << "ref";
     std::cout << "  ";
     std::cout << std::setw(6) << std::left << "type";
-    std::cout << std::setw(9) << std::left << "comp[%]";
+    std::cout << std::setw(10) << std::left << "comp[%]";
     for (int i = 1; i <= MachineModel.CacheSizes.size(); ++i) {
       std::string Capacity = "L" + std::to_string(i) + "[%]";
-      std::cout << std::setw(9) << std::left << Capacity;
+      std::cout << std::setw(10) << std::left << Capacity;
     }
-    std::cout << std::setw(9) << std::left << "tot[%]";
-    std::cout << std::setw(9) << std::left << "reuse[ln]";
+    std::cout << std::setw(10) << std::left << "tot[%]";
+    std::cout << std::setw(10) << std::left << "reuse[ln]";
     std::cout << std::endl;
     // print the accesses
     for (auto AccessInfo : AccessInfos.second) {
@@ -190,13 +190,13 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
       std::cout << std::setw(RefWidth) << std::right << AccessInfo.Access;
       std::cout << "  ";
       std::cout << std::setw(6) << std::left << (AccessInfo.ReadOrWrite == Read ? "rd" : "wr");
-      std::cout << std::setw(9) << std::left << std::setprecision(4) << std::fixed
+      std::cout << std::setw(10) << std::left << std::setprecision(5) << std::fixed
                 << 100.0 * (double)Compulsory / (double)TotalAccesses;
       for (int i = 0; i < MachineModel.CacheSizes.size(); ++i) {
-        std::cout << std::setw(9) << std::left << std::setprecision(4) << std::fixed
+        std::cout << std::setw(10) << std::left << std::setprecision(5) << std::fixed
                   << 100.0 * (double)Capacity[i] / (double)TotalAccesses;
       }
-      std::cout << std::setw(9) << std::left << std::setprecision(4) << std::fixed
+      std::cout << std::setw(10) << std::left << std::setprecision(5) << std::fixed
                 << 100.0 * (double)Total / (double)TotalAccesses;
       // compute the reuse line numbers
       auto Conflicts = Model.getConflicts()[AccessInfo.Name];
@@ -226,7 +226,7 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   std::cout << std::setw(16) << std::left << "compulsory:";
   std::cout << std::setw(20) << std::right << TotalCompulsory << std::endl;
   for (int i = 1; i <= MachineModel.CacheSizes.size(); ++i) {
-    std::string Capacity = "capacity (L" + std::to_string(i) + ")";
+    std::string Capacity = "capacity (L" + std::to_string(i) + "):";
     std::cout << std::setw(16) << std::left << Capacity;
     std::cout << std::setw(20) << std::right << TotalCapacity[i - 1] << std::endl;
   }
