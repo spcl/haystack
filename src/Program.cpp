@@ -82,7 +82,7 @@ void Program::extractScop(std::string SourceFile, std::string ScopFunction) {
                 return true;
               return false;
             });
-            if (Iter->Access == Name) {
+            if (Iter != AccessInfos->end() && Iter->Access == Name) {
               Iter->Access = Access;
               Iter++;
             }
