@@ -33,6 +33,11 @@ struct machine_model {
   std::vector<long> CacheSizes;
 };
 
+// struct defining the model options
+struct model_options {
+  bool ComputeBounds;
+};
+
 // struct holding the term information
 struct term {
   isl::val Coefficient;

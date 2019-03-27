@@ -1,6 +1,6 @@
 /*
-* Copyright (c) 2019, ETH Zurich
-*/
+ * Copyright (c) 2019, ETH Zurich
+ */
 
 #ifndef _HAY_STACK_H_
 #define _HAY_STACK_H_
@@ -22,10 +22,10 @@ class HayStack {
 public:
   HayStack() = delete;
   HayStack(const HayStack &other) = default;
-  HayStack(isl::ctx Context, machine_model MachineModel)
-      : Context_(Context), MachineModel_(MachineModel), Program_(Context, MachineModel){};
-  HayStack(isl::ctx Context, machine_model MachineModel, Program P)
-      : Context_(Context), MachineModel_(MachineModel), Program_(P){};
+  HayStack(isl::ctx Context, machine_model MachineModel, model_options ModelOptions)
+      : Context_(Context), MachineModel_(MachineModel), ModelOptions_(ModelOptions), Program_(Context, MachineModel){};
+  HayStack(isl::ctx Context, machine_model MachineModel, model_options ModelOptions, Program P)
+      : Context_(Context), MachineModel_(MachineModel), ModelOptions_(ModelOptions), Program_(P){};
 
   void compileProgram(std::string SourceFile);
   void compileProgram(std::string SourceFile, std::string ScopFunction);
@@ -55,6 +55,7 @@ private:
   // parameters
   isl::ctx Context_;
   machine_model MachineModel_;
+  model_options ModelOptions_;
 
   // program information
   Program Program_;

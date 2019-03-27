@@ -39,7 +39,7 @@ protected:
     Context_ = isl_ctx_alloc_with_pet_options();
     isl_options_set_on_error(Context_, ISL_ON_ERROR_ABORT);
 
-    Base_ = new HayStack(Context_, {CacheLineSize * ElementSize, {CacheSize * ElementSize}});
+    Base_ = new HayStack(Context_, {CacheLineSize * ElementSize, {CacheSize * ElementSize}}, {true});
     Base_->compileProgram("./blink.c");
   }
 

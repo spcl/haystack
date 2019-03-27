@@ -1,6 +1,6 @@
 /*
-* Copyright (c) 2019, ETH Zurich
-*/
+ * Copyright (c) 2019, ETH Zurich
+ */
 
 #include <algorithm>
 #include <cassert>
@@ -204,7 +204,7 @@ void HayStack::extractAccesses() {
       isl::set Domain = Schedule_.domain().extract_set(Set.get_space());
       Domain = Domain.fix_si(isl::dim::set, Domain.dim(isl::dim::set) - 1, i);
       // create the access
-      Access Current(AccessInfos[i].Name, MachineModel_, Domain, Program_.getElementSizes());
+      Access Current(AccessInfos[i].Name, MachineModel_, ModelOptions_, Domain, Program_.getElementSizes());
       Accesses_.push_back(Current);
     }
     return isl::stat::ok();

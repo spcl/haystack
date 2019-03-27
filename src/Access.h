@@ -1,6 +1,6 @@
 /*
-* Copyright (c) 2019, ETH Zurich
-*/
+ * Copyright (c) 2019, ETH Zurich
+ */
 
 #ifndef _ACCESS_H_
 #define _ACCESS_H_
@@ -18,8 +18,10 @@ class Access {
 public:
   Access() = delete;
   Access(const Access &other) = default;
-  Access(std::string Name, machine_model MachineModel, isl::set Domain, std::map<std::string, long> ElementSizes)
-      : Name_(Name), MachineModel_(MachineModel), Domain_(Domain), ElementSizes_(ElementSizes) {}
+  Access(std::string Name, machine_model MachineModel, model_options ModelOptions, isl::set Domain,
+         std::map<std::string, long> ElementSizes)
+      : Name_(Name), MachineModel_(MachineModel), ModelOptions_(ModelOptions), Domain_(Domain),
+        ElementSizes_(ElementSizes) {}
 
   // control the cache miss computation
   void initAccess(std::vector<NamedLong> ParameterValues, isl::set Parameters);
@@ -83,6 +85,7 @@ private:
   std::string Name_;
   isl::set Domain_;
   machine_model MachineModel_;
+  model_options ModelOptions_;
   std::map<std::string, long> ElementSizes_;
 
   isl::set Parameters_;

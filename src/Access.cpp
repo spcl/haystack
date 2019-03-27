@@ -1,6 +1,6 @@
 /*
-* Copyright (c) 2019, ETH Zurich
-*/
+ * Copyright (c) 2019, ETH Zurich
+ */
 
 #include <boost/math/common_factor.hpp>
 
@@ -69,52 +69,53 @@ void Access::computeStackDistances(isl::union_map BetweenMap) {
       BetweenMap = BetweenMap.intersect_params(Parameters_);
     // simplify between maps
     BetweenMap = BetweenMap.detect_equalities();
-#ifdef COMPUTE_BOUNDS
-    // compute the set of obvious cache misses
-    Timer::startTimer("ComputeBounds");
-    long Limit = *std::max_element(MachineModel_.CacheSizes.begin(), MachineModel_.CacheSizes.end());
-    Limit /= MachineModel_.CacheLineSize;
-    isl::union_set Misses = BetweenMap.domain().empty(BetweenMap.domain().get_space());
-    isl::union_set Domain = BetweenMap.domain();
-    // compute number of maps
-    auto countMap = [&](isl::map Map) {
-      auto countBasicMap = [&](isl::basic_map BasicMap) {
-        // check if the map is already part of the miss set
-        if (!Domain.intersect(BasicMap.domain()).is_empty()) {
-          // compute the lower bound for the map
-          auto Map = isl::map(BasicMap);
-          auto Norm = Map.sum(Map.lexmin().neg());
-          long UpperBound = isl::cardinality(Norm.range());
-          if (UpperBound > Limit) {
-            auto Complement = Norm.complement().intersect_domain(Map.domain());
-            long LowerBound = isl::cardinality(Complement.range().complement().intersect(Norm.range()));
-            if (LowerBound > Limit) {
-              Misses = Misses.unite(BasicMap.domain());
-              Domain = Domain.subtract(BasicMap.domain());
+    // compute stack distance bounds
+    if (ModelOptions_.ComputeBounds) {
+      // compute the set of obvious cache misses
+      Timer::startTimer("ComputeBounds");
+      long Limit = *std::max_element(MachineModel_.CacheSizes.begin(), MachineModel_.CacheSizes.end());
+      Limit /= MachineModel_.CacheLineSize;
+      isl::union_set Misses = BetweenMap.domain().empty(BetweenMap.domain().get_space());
+      isl::union_set Domain = BetweenMap.domain();
+      // compute number of maps
+      auto countMap = [&](isl::map Map) {
+        auto countBasicMap = [&](isl::basic_map BasicMap) {
+          // check if the map is already part of the miss set
+          if (!Domain.intersect(BasicMap.domain()).is_empty()) {
+            // compute the lower bound for the map
+            auto Map = isl::map(BasicMap);
+            auto Norm = Map.sum(Map.lexmin().neg());
+            long UpperBound = isl::cardinality(Norm.range());
+            if (UpperBound > Limit) {
+              auto Complement = Norm.complement().intersect_domain(Map.domain());
+              long LowerBound = isl::cardinality(Complement.range().complement().intersect(Norm.range()));
+              if (LowerBound > Limit) {
+                Misses = Misses.unite(BasicMap.domain());
+                Domain = Domain.subtract(BasicMap.domain());
+              }
             }
           }
-        }
+          return isl::stat::ok();
+        };
+        Map.foreach_basic_map(countBasicMap);
         return isl::stat::ok();
       };
-      Map.foreach_basic_map(countBasicMap);
-      return isl::stat::ok();
-    };
-    BetweenMap.foreach_map(countMap);
-    // count the domains with stack distance bound larger than the maximal cache size
-    if (!Misses.is_empty()) {
-      // count the misses
-      auto countMisses = [&](isl::set Set) {
-        long Count = isl::cardinality(Set);
-        Result_.Counted += Count;
-        Misses_ += Count;
-        return isl::stat::ok();
-      };
-      Misses.foreach_set(countMisses);
-      // update the between map
-      BetweenMap = BetweenMap.subtract_domain(Misses);
+      BetweenMap.foreach_map(countMap);
+      // count the domains with stack distance bound larger than the maximal cache size
+      if (!Misses.is_empty()) {
+        // count the misses
+        auto countMisses = [&](isl::set Set) {
+          long Count = isl::cardinality(Set);
+          Result_.Counted += Count;
+          Misses_ += Count;
+          return isl::stat::ok();
+        };
+        Misses.foreach_set(countMisses);
+        // update the between map
+        BetweenMap = BetweenMap.subtract_domain(Misses);
+      }
+      Timer::stopTimer("ComputeBounds");
     }
-    Timer::stopTimer("ComputeBounds");
-#endif
     // compute the stack distance for the remaining points of the iteration domain
     Timer::startTimer("CountBetweenMap");
     Expression_.clear();
@@ -159,15 +160,15 @@ void Access::countCapacityMisses() {
 
 std::vector<long> Access::countCapacityMisses(std::vector<long> CacheSizes) {
   Timer::startTimer("CountCapacityMisses");
-#ifdef COMPUTE_BOUNDS
-  // verify the cache sizes do not exceed the maximum cache size of the machine
-  // (the bounds were computed for the maximal cache size)
-  if (*std::max_element(MachineModel_.CacheSizes.begin(), MachineModel_.CacheSizes.end()) <
-      *std::max_element(CacheSizes.begin(), CacheSizes.end())) {
-    printf("-> exit(-1) cache size exceeds maximum cache size of the machine\n");
-    exit(-1);
+  if (ModelOptions_.ComputeBounds) {
+    // verify the cache sizes do not exceed the maximum cache size of the machine
+    // (the bounds were computed for the maximal cache size)
+    if (*std::max_element(MachineModel_.CacheSizes.begin(), MachineModel_.CacheSizes.end()) <
+        *std::max_element(CacheSizes.begin(), CacheSizes.end())) {
+      printf("-> exit(-1) cache size exceeds maximum cache size of the machine\n");
+      exit(-1);
+    }
   }
-#endif
   // initializes the limit and result vectors
   std::vector<long> Results;
   std::vector<long> Limits;

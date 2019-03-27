@@ -89,6 +89,7 @@ std::ostream &operator<<(std::ostream &os, const std::vector<long> &vec) {
 void run_model(isl::ctx Context, po::variables_map Variables) {
   // allocate the machine model with default values
   machine_model MachineModel = {Variables["line-size"].as<long>(), Variables["cache-sizes"].as<std::vector<long>>()};
+  model_options ModelOptions = {Variables["compute-bounds"].as<bool>()};
   printf("-> setting up cache levels\n");
   std::sort(MachineModel.CacheSizes.begin(), MachineModel.CacheSizes.end());
   for (auto CacheSize : MachineModel.CacheSizes) {
@@ -102,7 +103,7 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   // compute the total time
   auto StartExecution = std::chrono::high_resolution_clock::now();
   // allocate the cache model and compile the program
-  HayStack Model(Context, MachineModel);
+  HayStack Model(Context, MachineModel, ModelOptions);
   if (Variables.count("scop-function") == 0) {
     Model.compileProgram(Variables["input-file"].as<std::string>());
   } else {
@@ -153,7 +154,7 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   }
   // print the cache info access by access
   std::cout << DoubleLine << std::endl;
-  std::cout << "                  relative number of cache misses (Statement)" << std::endl;
+  std::cout << "                  relative number of cache misses (statement)" << std::endl;
   std::cout << DoubleLine << std::endl;
   for (auto AccessInfos : AccessInfosByLn) {
     // determine the last line of multiline
@@ -246,7 +247,8 @@ int main(int argc, const char **args) {
         ("line-size,l", po::value<long>()->default_value(CACHE_LINE_SIZE), "cache-line size in byte")        //
         ("input-file,f", po::value<std::string>(), "set the source file [file name]")                    //
         ("include-path,I", po::value<std::vector<std::string>>(), "set the include path [include path]") //
-        ("scop-function,s", po::value<std::string>(), "set the scop function scop");
+        ("scop-function,s", po::value<std::string>(), "set the scop function scop") //
+        ("compute-bounds,b", po::value<bool>()->default_value(true), "compute stack distance bounds");
 
     // parse the program options
     po::variables_map Variables;
