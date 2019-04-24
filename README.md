@@ -2,7 +2,7 @@
 
 Haystack is an analytical cache model that given a program computes the number of cache misses. The tool aims at providing the programmer with a better intuition of the memory access costs that on todays machines increasingly dominate the overall program execution time. The tool counts the cache misses symbolically and thus neither executes the program nor enumerates all memory accesses explicitly which makes the model runtime problem size independent. The tool models fully associative caches with LRU replacement policy.
 
-The paper "A Fast Analytical Model of Fully Associative Caches" (Tobias Gysi, Laurin Brandner, Tobias Grosser, and Torsten Hoefler) provides further implementation details. The software was developed by SPCL (ETH Zurich).
+The paper "A Fast Analytical Model of Fully Associative Caches" (Tobias Gysi, Tobias Grosser, Laurin Brandner, and Torsten Hoefler) provides further implementation details. The software was developed by SPCL (ETH Zurich).
 
 ## Installation
 
