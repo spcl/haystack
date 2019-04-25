@@ -9,7 +9,7 @@ int main() {
     for (int j = 0; j < D/T; j++) 
       for (int ii = i*T; ii < i*T + T; ii++)
         for (int jj = j*T; jj < j*T + T; jj++) {
-      B[ii][jj] = A[jj][ii];
+          B[ii][jj] = A[jj][ii];
   }
 #pragma endscop
 }

@@ -248,7 +248,7 @@ int main(int argc, const char **args) {
         ("input-file,f", po::value<std::string>(), "set the source file [file name]")                    //
         ("include-path,I", po::value<std::vector<std::string>>(), "set the include path [include path]") //
         ("scop-function,s", po::value<std::string>(), "set the scop function scop") //
-        ("compute-bounds,b", po::value<bool>()->default_value(true), "compute stack distance bounds");
+        ("compute-bounds,b", po::value<bool>()->default_value(false), "compute stack distance bounds");
 
     // parse the program options
     po::variables_map Variables;
