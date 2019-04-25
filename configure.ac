@@ -110,13 +110,12 @@ AM_CONDITIONAL(BUILD_PET, test $with_pet = build)
 # AX_CREATE_PKGCONFIG_INFO
 
 # copy the example files
-AC_CONFIG_LINKS([tests/blink.c:examples/blink.c])
-AC_CONFIG_LINKS([tests/cholesky.c:examples/cholesky.c])
-AC_CONFIG_LINKS([tests/copy.c:examples/copy.c])
-AC_CONFIG_LINKS([tests/gemm.c:examples/gemm.c])
-AC_CONFIG_LINKS([tests/multiplication.c:examples/multiplication.c])
-AC_CONFIG_LINKS([tests/stencil.c:examples/stencil.c])
-AC_CONFIG_LINKS([tests/toy.c:examples/toy.c])
+AC_CONFIG_LINKS([tests/blink.c:tests/inputs/blink.c])
+AC_CONFIG_LINKS([tests/cholesky.c:tests/inputs/cholesky.c])
+AC_CONFIG_LINKS([tests/copy.c:tests/inputs/copy.c])
+AC_CONFIG_LINKS([tests/multiplication.c:tests/inputs/multiplication.c])
+AC_CONFIG_LINKS([tests/stencil.c:tests/inputs/stencil.c])
+AC_CONFIG_LINKS([tests/toy.c:tests/inputs/toy.c])
 
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_FILES(Makefile src/Makefile tests/Makefile)

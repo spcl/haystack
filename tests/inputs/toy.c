@@ -1,10 +1,9 @@
 int main() {
-  int i;
   int N;
   float A[N];
 
 #pragma scop
-  for (i = 0; i < N; i++) {
+  for (int i = 0; i < N; i++) {
 S0: A[i] = 0;
 S1: A[N-1-i] = 1;
     if (i < N/2)
