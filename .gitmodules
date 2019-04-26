@@ -1,13 +1,13 @@
 [submodule "barvinok"]
 	path = barvinok
-	url = git://repo.or.cz/barvinok.git
+	url = https://repo.or.cz/barvinok.git
 [submodule "pet"]
 	path = pet
-	url = git://repo.or.cz/pet.git
+	url = https://repo.or.cz/pet.git
 [submodule "googletest"]
 	path = googletest
-	url = git@github.com:google/googletest.git
+	url = https://github.com/google/googletest.git
 [submodule "isl"]
 	path = isl
-	url = git@github.com:spcl/haystack-isl.git
+	url = https://github.com/spcl/haystack-isl.git
 	branch = master
