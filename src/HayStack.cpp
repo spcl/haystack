@@ -47,11 +47,11 @@ void HayStack::initModel(std::vector<NamedLong> Parameters) {
   for (auto &Parameter : Parameters) {
     int Position = Parameters_.find_dim_by_name(isl::dim::param, Parameter.first);
     if (Position < 0 || Position >= NumberOfParameters) {
-      printf("-> exit(-1) cannot find parameter %s\n", Parameter.first.c_str());
-      exit(-1);
+      printf("-> ignoring parameter %s\n", Parameter.first.c_str());
+    } else {
+      Parameters_ = Parameters_.fix_si(isl::dim::param, Position, Parameter.second);
+      SortedParameters[Position] = Parameter;
     }
-    Parameters_ = Parameters_.fix_si(isl::dim::param, Position, Parameter.second);
-    SortedParameters[Position] = Parameter;
   }
   // copy the sorted parameters to the parameter value vector
   for (auto &Entry : SortedParameters) {

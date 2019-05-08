@@ -1,6 +1,6 @@
 /*
-* Copyright (c) 2019, ETH Zurich
-*/
+ * Copyright (c) 2019, ETH Zurich
+ */
 
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
@@ -109,10 +109,36 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
   } else {
     Model.compileProgram(Variables["input-file"].as<std::string>(), Variables["scop-function"].as<std::string>());
   }
+  // parsing the parameters
+  std::vector<NamedLong> Parameters;
+  if (Variables.count("define-parameters") != 0) {
+    printf("-> parsing the parameters...\n");
+    std::vector<std::string> ParamStrings = Variables["define-parameters"].as<std::vector<std::string>>();
+    for (auto ParamString : ParamStrings) {
+      std::string Name;
+      long Value;
+      try {
+        std::string Delimiter = "=";
+        auto Split = ParamString.find(Delimiter);
+        if (Split == std::string::npos) {
+          throw std::runtime_error("did not find delimiter");
+        }
+        std::string Name = ParamString.substr(0, ParamString.find(Delimiter));
+        long Value = std::stol(ParamString.substr(ParamString.find(Delimiter) + 1));
+        printf("   - %s = %ld\n", Name.c_str(), Value);
+        Parameters.push_back(std::make_pair(Name, Value));
+      } catch (std::exception) {
+        printf("-> exit(-1) failed to parse %s\n", ParamString.c_str());
+        exit(-1);
+      }
+    }
+    Model.initModel(Parameters);
+    printf("-> done\n");
+  }
   // run the preprocessing
   printf("-> start processing...\n");
   auto Start = std::chrono::high_resolution_clock::now();
-  Model.initModel();
+  Model.initModel(Parameters);
   // execute the cache model
   auto CacheMisses = Model.countCacheMisses();
   auto Stop = std::chrono::high_resolution_clock::now();
@@ -243,11 +269,12 @@ int main(int argc, const char **args) {
     Descriptor.add_options()                    //
         ("help,h", "print the program options") //
         ("cache-sizes,c", po::value<std::vector<long>>()->multitoken()->default_value({CACHE_SIZE1, CACHE_SIZE2}),
-         "cache sizes in byte")                                                                         //
-        ("line-size,l", po::value<long>()->default_value(CACHE_LINE_SIZE), "cache-line size in byte")        //
-        ("input-file,f", po::value<std::string>(), "set the source file [file name]")                    //
-        ("include-path,I", po::value<std::vector<std::string>>(), "set the include path [include path]") //
-        ("scop-function,s", po::value<std::string>(), "set the scop function scop") //
+         "cache sizes in byte")                                                                                       //
+        ("line-size,l", po::value<long>()->default_value(CACHE_LINE_SIZE), "cache-line size in byte")                 //
+        ("input-file,f", po::value<std::string>(), "set the source file [file name]")                                 //
+        ("include-path,I", po::value<std::vector<std::string>>(), "set the include path [include path]")              //
+        ("define-parameters,d", po::value<std::vector<std::string>>()->multitoken(), "parameter values [N=10 M=100]") //
+        ("scop-function,s", po::value<std::string>(), "set the scop function scop")                                   //
         ("compute-bounds,b", po::value<bool>()->default_value(false), "compute stack distance bounds");
 
     // parse the program options
