@@ -214,7 +214,10 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
       auto Capacity = Iter->second.CapacityMisses;
       auto Total = Iter->second.Total;
       // print the access info
-      std::cout << std::setw(RefWidth) << std::right << AccessInfo.Access;
+      std::string Name = AccessInfo.Access;
+      if (Name.length() > RefWidth)
+        Name = Name.substr(0, RefWidth);
+      std::cout << std::setw(RefWidth) << std::right << Name;
       std::cout << "  ";
       std::cout << std::setw(6) << std::left << (AccessInfo.ReadOrWrite == Read ? "rd" : "wr");
       std::cout << std::setw(10) << std::left << std::setprecision(5) << std::fixed
