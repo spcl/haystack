@@ -132,7 +132,6 @@ void run_model(isl::ctx Context, po::variables_map Variables) {
         exit(-1);
       }
     }
-    Model.initModel(Parameters);
     printf("-> done\n");
   }
   // run the preprocessing
